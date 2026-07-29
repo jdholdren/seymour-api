@@ -5,14 +5,14 @@ import (
 
 	"go.temporal.io/sdk/temporal"
 
-	seyerrs "github.com/jdholdren/seymour/internal/errors"
+	"github.com/jdholdren/seymour/internal/seymour"
 )
 
 // Unwraps the application error from temporal into a seyerr if possible.
 //
 // Returns true if the error is convertible to a seymour error.
 // Returns false otherwise.
-func asSeyerr(err error, seyerr **seyerrs.Error) bool {
+func asSeyerr(err error, seyerr **seymour.Error) bool {
 	if err == nil {
 		return false
 	}

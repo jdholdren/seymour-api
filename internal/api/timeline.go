@@ -12,7 +12,6 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/sym01/htmlsanitizer"
 
-	seyerrs "github.com/jdholdren/seymour/internal/errors"
 	"github.com/jdholdren/seymour/internal/seymour"
 	"github.com/jdholdren/seymour/internal/worker"
 )
@@ -23,7 +22,7 @@ type PostSubscriptionReq struct {
 
 func validatePostSubscriptionReq(req PostSubscriptionReq) error {
 	if req.FeedURL == "" {
-		return seyerrs.E("feed_url is required", http.StatusBadRequest)
+		return seymour.E("feed_url is required", http.StatusBadRequest)
 	}
 
 	return nil
@@ -72,7 +71,7 @@ func (s Server) postSusbcriptions(w http.ResponseWriter, r *http.Request) error 
 		body PostSubscriptionReq
 	)
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		return seyerrs.E(err, http.StatusBadRequest)
+		return seymour.E(err, http.StatusBadRequest)
 	}
 	if err := validatePostSubscriptionReq(body); err != nil {
 		return err
@@ -80,7 +79,7 @@ func (s Server) postSusbcriptions(w http.ResponseWriter, r *http.Request) error 
 
 	// Start the workflow to create it and verify it
 	feedID, err := worker.TriggerCreateFeedWorkflow(ctx, s.tempCli, body.FeedURL)
-	var seyErr *seyerrs.Error
+	var seyErr *seymour.Error
 	if errors.As(err, &seyErr) {
 		return seyErr
 	}

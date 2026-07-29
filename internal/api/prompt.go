@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"time"
 
-	seyerrs "github.com/jdholdren/seymour/internal/errors"
+	"github.com/jdholdren/seymour/internal/seymour"
 )
 
 type PromptResp struct {
@@ -41,7 +41,7 @@ type SetPromptReq struct {
 
 func (req SetPromptReq) Validate() error {
 	if req.Prompt == "" {
-		return seyerrs.E("content is required", http.StatusBadRequest)
+		return seymour.E("content is required", http.StatusBadRequest)
 	}
 	return nil
 }
@@ -51,7 +51,7 @@ func (s Server) setPrompt(w http.ResponseWriter, r *http.Request) error {
 
 	body, err := decodeValid[SetPromptReq](r.Body)
 	if err != nil {
-		return seyerrs.E(err, http.StatusBadRequest)
+		return seymour.E(err, http.StatusBadRequest)
 	}
 
 	prompt, err := s.repo.SetPrompt(ctx, body.Prompt)
