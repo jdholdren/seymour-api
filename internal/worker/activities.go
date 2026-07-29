@@ -11,7 +11,6 @@ import (
 	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/temporal"
 
-	seyerrs "github.com/jdholdren/seymour/internal/errors"
 	"github.com/jdholdren/seymour/internal/seymour"
 	"github.com/jdholdren/seymour/internal/sync"
 )
@@ -62,7 +61,7 @@ func (a activities) SyncFeed(ctx context.Context, feedID string, ignoreRecency b
 
 	feed, entries, err := sync.Feed(ctx, feed.ID, feed.URL)
 	if err != nil {
-		return temporal.NewApplicationError("error syncing feed", "seyerr", seyerrs.E(err, http.StatusBadRequest))
+		return temporal.NewApplicationError("error syncing feed", "seyerr", seymour.E(err, http.StatusBadRequest))
 	}
 
 	if err := a.repo.UpdateFeed(ctx, feed.ID, seymour.UpdateFeedArgs{

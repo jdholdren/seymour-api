@@ -14,7 +14,6 @@ import (
 	lru "github.com/hashicorp/golang-lru/v2"
 	"go.temporal.io/sdk/client"
 
-	seyerrs "github.com/jdholdren/seymour/internal/errors"
 	"github.com/jdholdren/seymour/internal/seymour"
 )
 
@@ -59,10 +58,10 @@ func (f handlerFuncE) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Either it's already a structured error, or coerce it to one
-	sErr := &seyerrs.Error{}
+	sErr := &seymour.Error{}
 	if !errors.As(err, &sErr) {
 		slog.Error("non seyerr", "err", err)
-		sErr = seyerrs.E(http.StatusInternalServerError, "internal server error")
+		sErr = seymour.E(http.StatusInternalServerError, "internal server error")
 	}
 
 	if err := writeJSON(w, sErr.Status, sErr); err != nil {

@@ -11,7 +11,7 @@ import (
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
 
-	seyerrs "github.com/jdholdren/seymour/internal/errors"
+	"github.com/jdholdren/seymour/internal/seymour"
 )
 
 // NOTE: The workflow functions are really just methods hanging off of workflows for namespace
@@ -81,7 +81,7 @@ func TriggerCreateFeedWorkflow(ctx context.Context, c client.Client, feedURL str
 
 	var feedID string
 	err = we.Get(context.Background(), &feedID)
-	seyErr := &seyerrs.Error{}
+	seyErr := &seymour.Error{}
 	if asSeyerr(err, &seyErr) {
 		return "", seyErr
 	}

@@ -1,23 +1,23 @@
-package errors_test
+package seymour_test
 
 import (
 	"errors"
 	"net/http"
 	"testing"
 
-	seyerrs "github.com/jdholdren/seymour/internal/errors"
+	"github.com/jdholdren/seymour/internal/seymour"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestEConstructor(t *testing.T) {
-	got := seyerrs.E(
+	got := seymour.E(
 		"something went wrong",
-		seyerrs.Detail{Field: "name", Error: "was bad"},
+		seymour.ErrorDetail{Field: "name", Error: "was bad"},
 		http.StatusBadRequest,
 	)
-	want := &seyerrs.Error{
+	want := &seymour.Error{
 		Err: errors.New("something went wrong"),
-		Details: []seyerrs.Detail{
+		ErrorDetails: []seymour.ErrorDetail{
 			{Field: "name", Error: "was bad"},
 		},
 		Status: http.StatusBadRequest,
