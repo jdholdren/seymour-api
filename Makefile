@@ -1,7 +1,7 @@
 .PHONY: start yac up build rb-api rb-worker
 
 test:
-	go -C server test ./...
+	go test ./...
 
 up:
 	docker compose up

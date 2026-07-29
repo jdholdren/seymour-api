@@ -4,29 +4,25 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What is Seymour?
 
-Seymour is a single-tenant RSS feed aggregator with AI-powered curation. Users subscribe to RSS feeds, and a Temporal worker syncs feeds, builds a timeline, then uses the Anthropic Claude API to judge/curate entries based on a user-defined prompt.
-
-This is a monorepo: the Go backend lives under `server/` and the Vue/Vite frontend lives under `fe/`. `docker-compose.yaml`, the `Makefile`, and CI workflows live at the repo root and orchestrate both.
+Seymour is a single-tenant RSS feed aggregator with AI-powered curation. Users subscribe to RSS feeds, and a Temporal worker syncs feeds, builds a timeline, then uses the Anthropic Claude API to judge/curate entries based on a user-defined prompt. The frontend is a separate project (expected at localhost:3000).
 
 ## Common Commands
 
-- `make test` — Run all Go tests (`go -C server test ./...`)
-- `go -C server test -run TestName ./internal/path/...` — Run a single test
-- `make up` — Start all services via docker compose (worker, api, fe, temporal-server)
+- `make test` — Run all tests (`go test ./...`)
+- `go test -run TestName ./internal/path/...` — Run a single test
+- `make up` — Start all services via docker compose
 - `make build` — Build all Docker images
 - `make rb-api` — Rebuild and restart only the API service
 - `make rb-worker` — Rebuild and restart only the worker service
 
 ## Architecture
 
-Two binaries, both in `server/cmd/`:
+Two binaries, both in `cmd/`:
 
-- **`server/cmd/api`** — REST API server (port 4444). HTTP handlers in `server/internal/api/`. Uses Gorilla Mux for routing.
-- **`server/cmd/worker`** — Temporal workflow worker. Workflows and activities in `server/internal/worker/`.
+- **`cmd/api`** — REST API server (port 4444). HTTP handlers in `internal/api/`. Uses Gorilla Mux for routing.
+- **`cmd/worker`** — Temporal workflow worker. Workflows and activities in `internal/worker/`.
 
-The frontend (`fe/`) is a Vue/Vite SPA served via nginx in production (port 3000 in docker compose, mapped to container port 80), and talks to the API directly over `VITE_API_HOST` (no reverse proxy).
-
-### Core packages (under `server/`)
+### Core packages
 
 - **`internal/seymour`** — Domain models and the `Repository` interface. All data access goes through this single interface. `DBTime` is a custom type for SQLite datetime marshaling using RFC3339.
 - **`internal/sqlite`** — SQLite implementation of `Repository`. Uses `sqlx` + `squirrel` query builder. Pure-Go SQLite driver (no CGO): `modernc.org/sqlite`.

@@ -1,7 +1,7 @@
 services:
   worker:
     build:
-      context: ./server
+      context: .
       dockerfile: ./Dockerfile
       args:
         MAIN_PATH: ./cmd/worker
@@ -15,7 +15,7 @@ services:
       - temporal-server
   api:
     build:
-      context: ./server
+      context: .
       dockerfile: ./Dockerfile
       args:
         MAIN_PATH: ./cmd/api
@@ -31,19 +31,6 @@ services:
       - ./data/citadel:/data/citadel
     depends_on:
       - temporal-server
-  fe:
-    build:
-      context: ./fe
-      dockerfile: ./Dockerfile.dev
-    ports:
-      - "3000:3000"
-    environment:
-      - VITE_API_HOST=http://localhost:4444
-    volumes:
-      - ./fe:/app
-      - /app/node_modules
-    depends_on:
-      - api
   temporal-server:
     image: temporalio/temporal:latest
     ports:
