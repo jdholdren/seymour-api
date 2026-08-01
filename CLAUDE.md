@@ -4,7 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What is Seymour?
 
-Seymour is a single-tenant RSS feed aggregator with AI-powered curation. Users subscribe to RSS feeds, and a Temporal worker syncs feeds, builds a timeline, then uses the Anthropic Claude API to judge/curate entries based on a user-defined prompt. The frontend is a separate project (expected at localhost:3000).
+Seymour is a single-tenant RSS feed aggregator with a curated timeline. Users subscribe to RSS feeds, and a Temporal worker syncs feeds, builds a timeline, then judges entries to decide what gets surfaced. The frontend is a separate project (expected at localhost:3000).
+
+The judging step is a seam: `activities.JudgeEntries` in `internal/worker/judge.go` currently approves every entry. Replace its body to introduce a real curation strategy — the surrounding workflow, batching, and persistence already exist.
 
 ## Common Commands
 
@@ -31,7 +33,7 @@ Two binaries, both in `cmd/`:
   - `SyncAllFeeds` — Scheduled every 15 min, batches feeds in groups of 50
   - `CreateFeed` — Creates feed, syncs, rolls back on failure
   - `RefreshTimeline` — Inserts missing timeline entries, triggers judging
-  - `JudgeTimeline` — Calls Claude API to approve/reject entries (batches of 20, max 3 loops)
+  - `JudgeTimeline` — Approves/rejects entries via `JudgeEntries` (batches of `judgeBatchSize`, max 3 loops)
 - **`internal/migrations`** — Embedded SQL migration files, run via `golang-migrate`
 - **`internal/errors`** — Custom error type with HTTP status codes; wraps as non-retryable Temporal errors for internal failures
 
@@ -53,14 +55,11 @@ SQLite with connection flags `-txlock=immediate -busy_timeout=5000`. Migrations 
 ## Environment Variables
 
 **API:** `DATABASE` (SQLite path), `TEMPORAL_HOST_PORT`, `PORT` (default 4444), `CORS`
-**Worker:** `DATABASE`, `TEMPORAL_HOST_PORT`, `CLAUDE_API_KEY`
-
-API key is injected via `.env` file in docker-compose.
+**Worker:** `DATABASE`, `TEMPORAL_HOST_PORT`
 
 ## API Endpoints
 
 - `GET /api/viewer` — Viewer info
-- `GET/PUT /api/prompt` — Active curation prompt
 - `POST /api/subscriptions` — Subscribe to feed (triggers CreateFeed workflow)
 - `GET /api/subscriptions` — List subscriptions
 - `GET /api/timeline` — Paginated curated timeline (supports `feed_id` filter)

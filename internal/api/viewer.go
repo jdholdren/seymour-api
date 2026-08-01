@@ -7,8 +7,6 @@ import (
 type (
 	Viewer struct {
 		Subscriptions map[string]ViewerSubscription `json:"subscriptions"`
-		Prompt        *string                       `json:"prompt"`
-		HasPromptKey  bool                          `json:"has_prompt_key"`
 	}
 
 	ViewerSubscription struct {
@@ -53,19 +51,7 @@ func (s Server) handleViewer(w http.ResponseWriter, r *http.Request) error {
 		}
 	}
 
-	// Fetch active prompt
-	var promptContent *string
-	activePrompt, err := s.repo.ActivePrompt(ctx)
-	if err != nil {
-		return err
-	}
-	if activePrompt != nil {
-		promptContent = &activePrompt.Content
-	}
-
 	return writeJSON(w, http.StatusOK, Viewer{
 		Subscriptions: viewerSubs,
-		Prompt:        promptContent,
-		HasPromptKey:  s.hasPromptKey,
 	})
 }

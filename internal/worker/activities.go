@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/anthropics/anthropic-sdk-go"
 	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/temporal"
 
@@ -16,8 +15,7 @@ import (
 )
 
 type activities struct {
-	repo         seymour.Repository
-	claudeClient *anthropic.Client
+	repo seymour.Repository
 }
 
 // Instance to make the workflow a bit more readable

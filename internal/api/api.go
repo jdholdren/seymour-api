@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"log/slog"
 	"net/http"
 	"time"
@@ -26,25 +25,6 @@ func writeJSON(w http.ResponseWriter, status int, data any) error {
 	}
 
 	return nil
-}
-
-// validator is a surface that can validate itself and return an error
-// if something is wrong.
-type validator interface {
-	Validate() error
-}
-
-// decodeValid decodes a request and then validates it.
-func decodeValid[V validator](r io.Reader) (V, error) {
-	var v V
-	if err := json.NewDecoder(r).Decode(&v); err != nil {
-		return v, fmt.Errorf("error decoding request: %w", err)
-	}
-	if err := v.Validate(); err != nil {
-		return v, fmt.Errorf("error validating request: %w", err)
-	}
-
-	return v, nil
 }
 
 // handlerFuncE is a modified type of [http.HandlerFunc] that returns an error.
@@ -86,12 +66,11 @@ type Server struct {
 	fetchClient    *http.Client
 	entryRespCache *lru.Cache[string, FeedEntryResp]
 
-	repo         seymour.Repository
-	tempCli      client.Client
-	hasPromptKey bool
+	repo    seymour.Repository
+	tempCli client.Client
 }
 
-func NewServer(port int, corsHeader string, repo seymour.Repository, temporalCli client.Client, hasPromptKey bool) *Server {
+func NewServer(port int, corsHeader string, repo seymour.Repository, temporalCli client.Client) *Server {
 	var (
 		r        = errRouter{Router: mux.NewRouter()}
 		cache, _ = lru.New[string, FeedEntryResp](1024)
@@ -104,7 +83,6 @@ func NewServer(port int, corsHeader string, repo seymour.Repository, temporalCli
 		entryRespCache: cache,
 		repo:           repo,
 		tempCli:        temporalCli,
-		hasPromptKey:   hasPromptKey,
 		Server: &http.Server{
 			Addr:         fmt.Sprintf(":%d", port),
 			ReadTimeout:  5 * time.Second,
@@ -120,10 +98,6 @@ func NewServer(port int, corsHeader string, repo seymour.Repository, temporalCli
 
 	r.Use(accessLogMiddleware) // Log everything
 	r.HandleFuncE("/api/viewer", srvr.handleViewer).Methods(http.MethodGet)
-
-	// Prompt management
-	r.HandleFuncE("/api/prompt", srvr.getPrompt).Methods(http.MethodGet)
-	r.HandleFuncE("/api/prompt", srvr.setPrompt).Methods(http.MethodPut)
 
 	// Subscription management
 	r.HandleFuncE("/api/subscriptions", srvr.postSusbcriptions).Methods(http.MethodPost)

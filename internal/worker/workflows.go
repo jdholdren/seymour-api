@@ -212,8 +212,8 @@ func (w workflows) JudgeTimeline(ctx workflow.Context) error {
 		return nil
 	}
 
-	// Loop at most 3 times based on a claude batch of 20 posts
-	loops := int(math.Min(3, float64(entryCount/20)+1))
+	// Loop at most 3 times based on how many entries a judgement pass handles
+	loops := int(math.Min(3, float64(entryCount/judgeBatchSize)+1))
 
 	for range loops {
 		// Judge entries
