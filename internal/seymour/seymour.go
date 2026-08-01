@@ -8,7 +8,7 @@ import (
 )
 
 // Repository provides a unified interface for all data operations.
-// It combines the functionality of FeedService, TimelineService, and UserService
+// It combines the functionality of FeedService and TimelineService
 // into a single interface to simplify dependency injection and testing.
 type Repository interface {
 	// Feed operations
@@ -24,10 +24,6 @@ type Repository interface {
 	InsertEntries(ctx context.Context, entries []FeedEntry) error
 	UpdateFeed(ctx context.Context, id string, args UpdateFeedArgs) error
 
-	// Prompt operations
-	ActivePrompt(ctx context.Context) (*Prompt, error)
-	SetPrompt(ctx context.Context, content string) (Prompt, error)
-
 	// Timeline operations
 	CreateSubscription(ctx context.Context, feedID string) error
 	AllSubscriptions(ctx context.Context) ([]Subscription, error)
@@ -37,14 +33,6 @@ type Repository interface {
 	UpdateTimelineEntry(ctx context.Context, id string, status TimelineEntryStatus) error
 	TimelineEntries(ctx context.Context, args TimelineEntriesArgs) ([]TimelineEntry, error)
 	CountTimelineEntries(ctx context.Context, args TimelineEntriesArgs) (int, error)
-}
-
-// Prompt represents a curation prompt for AI-based feed judging.
-type Prompt struct {
-	ID        string `db:"id"`
-	Content   string `db:"content"`
-	Active    bool   `db:"active"`
-	CreatedAt DBTime `db:"created_at"`
 }
 
 // Feed represents an RSS feed's details.
@@ -91,7 +79,7 @@ type TimelineEntry struct {
 	CreatedAt   DBTime `db:"created_at"`
 	FeedID      string `db:"feed_id"`
 
-	// For curation: if the entry has been approved or not by the AI
+	// For curation: whether the entry has been approved by the judge
 	Status TimelineEntryStatus `db:"status"`
 }
 

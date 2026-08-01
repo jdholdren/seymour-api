@@ -8,8 +8,6 @@ import (
 	"os/signal"
 	"time"
 
-	"github.com/anthropics/anthropic-sdk-go"
-	"github.com/anthropics/anthropic-sdk-go/option"
 	"github.com/jmoiron/sqlx"
 	"github.com/oklog/run"
 	"github.com/sethvargo/go-envconfig"
@@ -26,9 +24,6 @@ import (
 type config struct {
 	Database         string `env:"DATABASE, required"`
 	TemporalHostPort string `env:"TEMPORAL_HOST_PORT, required"`
-
-	ClaudeAPIKey    string `env:"CLAUDE_API_KEY"`
-	ClaudeAPKeyFile string `env:"CLAUDE_API_KEY_FILE"`
 }
 
 func main() {
@@ -39,15 +34,6 @@ func main() {
 	var cfg config
 	if err := envconfig.Process(ctx, &cfg); err != nil {
 		log.Fatalf("error parsing config: %s", err)
-	}
-	if cfg.ClaudeAPKeyFile != "" {
-		// If the key file is specified use that to try and populate the key
-		key, err := os.ReadFile(cfg.ClaudeAPKeyFile)
-		if err != nil {
-			log.Fatalf("error loading claude api key file: %s", err)
-		}
-
-		cfg.ClaudeAPIKey = string(key)
 	}
 
 	l := slog.New(logger.NewContextHandler(slog.NewTextHandler(os.Stdout, nil)))
@@ -84,13 +70,8 @@ func main() {
 		log.Fatalln("error ensuring default namespace:", err)
 	}
 
-	// Create claude client
-	claudeClient := anthropic.NewClient(
-		option.WithAPIKey(cfg.ClaudeAPIKey),
-	)
-
 	// Create the worker
-	w, err := seyworker.NewWorker(ctx, repo, temporalCli, &claudeClient)
+	w, err := seyworker.NewWorker(ctx, repo, temporalCli)
 	if err != nil {
 		log.Fatalf("Failed to create worker: %v", err)
 	}
