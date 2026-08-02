@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/gorilla/handlers"
@@ -75,6 +76,7 @@ type Server struct {
 
 	oauthCfg     *oauth2.Config
 	secureCookie *securecookie.SecureCookie
+	frontendURL  *url.URL
 }
 
 func NewServer(
@@ -86,6 +88,7 @@ func NewServer(
 	temporalCli client.Client,
 	oauthCfg *oauth2.Config,
 	sessionHashKey, sessionBlockKey []byte,
+	frontendURL *url.URL,
 ) *Server {
 	var (
 		r        = errRouter{Router: mux.NewRouter()}
@@ -103,6 +106,7 @@ func NewServer(
 		tempCli:        temporalCli,
 		oauthCfg:       oauthCfg,
 		secureCookie:   securecookie.New(sessionHashKey, sessionBlockKey),
+		frontendURL:    frontendURL,
 		Server: &http.Server{
 			Addr:         fmt.Sprintf(":%d", port),
 			ReadTimeout:  5 * time.Second,
