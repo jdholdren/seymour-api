@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"log/slog"
+	"net/url"
 	"os"
 	"os/signal"
 	"time"
@@ -35,6 +36,8 @@ type config struct {
 
 	Port int    `env:"PORT, default=4444"`
 	Cors string `env:"CORS"`
+
+	FrontendURL string `env:"FRONTEND_URL, required"` // Where the browser is sent after GitHub OAuth completes, e.g. http://localhost:3000
 
 	GithubClientID     string `env:"GITHUB_CLIENT_ID, required"`
 	GithubClientSecret string `env:"GITHUB_CLIENT_SECRET, required"`
@@ -110,6 +113,11 @@ func main() {
 		log.Fatalf("error decoding SESSION_BLOCK_KEY as hex: %s", err)
 	}
 
+	frontendURL, err := url.Parse(cfg.FrontendURL)
+	if err != nil {
+		log.Fatalf("error parsing FRONTEND_URL: %s", err)
+	}
+
 	// Create and start the server
 	server := api.NewServer(
 		cfg.Port,
@@ -121,6 +129,7 @@ func main() {
 		oauthCfg,
 		sessionHashKey,
 		sessionBlockKey,
+		frontendURL,
 	)
 
 	// Set up run group

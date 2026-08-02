@@ -4,7 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What is Seymour?
 
-Seymour is a single-tenant RSS feed aggregator with a curated timeline. Users subscribe to RSS feeds, and a Temporal worker syncs feeds, builds a timeline, then judges entries to decide what gets surfaced. The frontend is a separate project (expected at localhost:3000).
+Seymour is an RSS feed aggregator with a curated timeline, moving from single-tenant to multi-tenant. Users subscribe to RSS feeds, and a Temporal worker syncs feeds, builds a timeline, then judges entries to decide what gets surfaced. The frontend is a separate project (expected at localhost:3000).
+
+A `UserService` (`internal/seymour/user.go`, implemented in `internal/sqlite/users.go`) and GitHub OAuth login (`internal/api/oauth.go`) exist, but nothing in the API enforces auth yet — the session cookie is issued/cleared, but no middleware reads it and there's no "who am I" endpoint.
 
 The judging step is a seam: `activities.JudgeEntries` in `internal/worker/judge.go` currently approves every entry. Replace its body to introduce a real curation strategy — the surrounding workflow, batching, and persistence already exist.
 
@@ -35,7 +37,6 @@ Two binaries, both in `cmd/`:
   - `RefreshTimeline` — Inserts missing timeline entries, triggers judging
   - `JudgeTimeline` — Approves/rejects entries via `JudgeEntries` (batches of `judgeBatchSize`, max 3 loops)
 - **`internal/migrations`** — Embedded SQL migration files, run via `golang-migrate`
-- **`internal/errors`** — Custom error type with HTTP status codes; wraps as non-retryable Temporal errors for internal failures
 
 ### Temporal patterns
 
@@ -54,7 +55,7 @@ SQLite with connection flags `-txlock=immediate -busy_timeout=5000`. Migrations 
 
 ## Environment Variables
 
-**API:** `DATABASE` (SQLite path), `TEMPORAL_HOST_PORT`, `PORT` (default 4444), `CORS`
+**API:** `DATABASE` (SQLite path), `TEMPORAL_HOST_PORT`, `PORT` (default 4444), `CORS`, `FRONTEND_URL` (browser is redirected here after GitHub OAuth completes), `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `GITHUB_REDIRECT_URL` (must match the GitHub OAuth app's configured callback URL), `SESSION_HASH_KEY`/`SESSION_BLOCK_KEY` (hex-encoded securecookie signing/encryption keys)
 **Worker:** `DATABASE`, `TEMPORAL_HOST_PORT`
 
 ## API Endpoints
@@ -64,6 +65,9 @@ SQLite with connection flags `-txlock=immediate -busy_timeout=5000`. Migrations 
 - `GET /api/subscriptions` — List subscriptions
 - `GET /api/timeline` — Paginated curated timeline (supports `feed_id` filter)
 - `GET /api/feed-entries/{feedEntryID}` — Full article content via go-readability
+- `GET /api/oauth-login/gh` — Start GitHub OAuth login; redirects to GitHub. Accepts `?s=<path>` for where to send the browser (on `FRONTEND_URL`) after login succeeds, defaults to `/`
+- `GET /api/oauth-callback/gh` — GitHub OAuth callback; verifies state, ensures the user via `UserService`, sets the `session` cookie, redirects to `FRONTEND_URL` + the requested path
+- `POST /api/logout` — Clears the `session` cookie
 
 ## Core Dev Loop
 

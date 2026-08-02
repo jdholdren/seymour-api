@@ -5,7 +5,9 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"net/http"
+	"net/url"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/jdholdren/seymour/internal/seymour"
@@ -39,6 +41,12 @@ func randomState() (string, error) {
 	return base64.URLEncoding.EncodeToString(b), nil
 }
 
+// isSafeRedirectPath guards against open redirects: it must be a path on the
+// frontend's own origin, not an absolute or protocol-relative URL to somewhere else.
+func isSafeRedirectPath(p string) bool {
+	return strings.HasPrefix(p, "/") && !strings.HasPrefix(p, "//")
+}
+
 func (s Server) startGithubLogin(w http.ResponseWriter, r *http.Request) error {
 	state, err := randomState()
 	if err != nil {
@@ -46,7 +54,7 @@ func (s Server) startGithubLogin(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	redirectPath := r.URL.Query().Get("s")
-	if redirectPath == "" {
+	if redirectPath == "" || !isSafeRedirectPath(redirectPath) {
 		redirectPath = "/"
 	}
 
@@ -142,7 +150,7 @@ func (s Server) githubOAuthCallback(w http.ResponseWriter, r *http.Request) erro
 		SameSite: http.SameSiteLaxMode,
 	})
 
-	http.Redirect(w, r, state.RedirectPath, http.StatusFound)
+	http.Redirect(w, r, s.frontendURL.ResolveReference(&url.URL{Path: state.RedirectPath}).String(), http.StatusFound)
 	return nil
 }
 
