@@ -3,14 +3,9 @@ package api
 import (
 	"net/http"
 	"strconv"
-)
 
-// paginationMeta holds pagination metadata for API responses.
-type paginationMeta struct {
-	Limit  int `json:"limit"`
-	Offset int `json:"offset"`
-	Total  int `json:"total,omitempty"` // Optional total count
-}
+	apiv1 "github.com/jdholdren/seymour/apis/v1"
+)
 
 // parsePaginationParams parses pagination parameters from an HTTP request.
 // Supports offset-based pagination (?offset=20&limit=10).
@@ -33,8 +28,8 @@ func parsePaginationParams(r *http.Request, defaultLimit, maxLimit int) (int, in
 }
 
 // calculatePaginationMeta builds pagination metadata for responses.
-func calculatePaginationMeta(limit, offset, total int) paginationMeta {
-	return paginationMeta{
+func calculatePaginationMeta(limit, offset, total int) apiv1.PaginationMeta {
+	return apiv1.PaginationMeta{
 		Limit:  limit,
 		Offset: offset,
 		Total:  total,

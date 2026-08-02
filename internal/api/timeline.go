@@ -12,15 +12,12 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/sym01/htmlsanitizer"
 
+	apiv1 "github.com/jdholdren/seymour/apis/v1"
 	"github.com/jdholdren/seymour/internal/seymour"
 	"github.com/jdholdren/seymour/internal/worker"
 )
 
-type PostSubscriptionReq struct {
-	FeedURL string `json:"feed_url"`
-}
-
-func validatePostSubscriptionReq(req PostSubscriptionReq) error {
+func validatePostSubscriptionReq(req apiv1.PostSubscriptionReq) error {
 	if req.FeedURL == "" {
 		return seymour.E("feed_url is required", http.StatusBadRequest)
 	}
@@ -28,17 +25,7 @@ func validatePostSubscriptionReq(req PostSubscriptionReq) error {
 	return nil
 }
 
-type FeedResp struct {
-	ID           string     `json:"id"`
-	Title        string     `json:"title"`
-	URL          string     `json:"url"`
-	Description  string     `json:"description"`
-	LastSyncedAt *time.Time `json:"last_synced_at"`
-	CreatedAt    time.Time  `json:"created_at"`
-	UpdatedAt    time.Time  `json:"updated_at"`
-}
-
-func apiFeed(f seymour.Feed) FeedResp {
+func apiFeed(f seymour.Feed) apiv1.FeedResp {
 	var (
 		title      string
 		desc       string
@@ -54,7 +41,7 @@ func apiFeed(f seymour.Feed) FeedResp {
 		lastSynced = &f.LastSyncedAt.Time
 	}
 
-	return FeedResp{
+	return apiv1.FeedResp{
 		ID:           f.ID,
 		Title:        title,
 		URL:          f.URL,
@@ -68,7 +55,7 @@ func apiFeed(f seymour.Feed) FeedResp {
 func (s Server) postSusbcriptions(w http.ResponseWriter, r *http.Request) error {
 	var (
 		ctx  = r.Context()
-		body PostSubscriptionReq
+		body apiv1.PostSubscriptionReq
 	)
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		return seymour.E(err, http.StatusBadRequest)
@@ -99,19 +86,6 @@ func (s Server) postSusbcriptions(w http.ResponseWriter, r *http.Request) error 
 	return writeJSON(w, http.StatusCreated, apiFeed(feed))
 }
 
-type SubscriptionResp struct {
-	ID              string     `json:"id"`
-	FeedID          string     `json:"feed_id"`
-	CreatedAt       time.Time  `json:"created_at"`
-	FeedName        string     `json:"feed_name"`
-	FeedDescription string     `json:"feed_description"`
-	LastSynced      *time.Time `json:"last_synced"`
-}
-
-type SubscriptionListResp struct {
-	Subscriptions []SubscriptionResp `json:"subscriptions"`
-}
-
 func (s Server) getSusbcriptions(w http.ResponseWriter, r *http.Request) error {
 	var (
 		ctx = r.Context()
@@ -122,8 +96,8 @@ func (s Server) getSusbcriptions(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	resp := SubscriptionListResp{
-		Subscriptions: []SubscriptionResp{},
+	resp := apiv1.SubscriptionListResp{
+		Subscriptions: []apiv1.SubscriptionResp{},
 	}
 	for _, sub := range subs {
 		// Totally inefficient, yet sufficient:
@@ -146,7 +120,7 @@ func (s Server) getSusbcriptions(w http.ResponseWriter, r *http.Request) error {
 			lastSynced = &feed.LastSyncedAt.Time
 		}
 
-		resp.Subscriptions = append(resp.Subscriptions, SubscriptionResp{
+		resp.Subscriptions = append(resp.Subscriptions, apiv1.SubscriptionResp{
 			ID:              sub.ID,
 			FeedID:          sub.FeedID,
 			CreatedAt:       sub.CreatedAt.Time,
@@ -158,18 +132,18 @@ func (s Server) getSusbcriptions(w http.ResponseWriter, r *http.Request) error {
 	return writeJSON(w, http.StatusCreated, resp)
 }
 
-type TimelineResp struct {
-	Items      []TimelineEntry `json:"items"`
-	Pagination paginationMeta  `json:"pagination"`
-}
+func (s Server) deleteSubscription(w http.ResponseWriter, r *http.Request) error {
+	var (
+		ctx = r.Context()
+		id  = mux.Vars(r)["subscriptionID"]
+	)
 
-type TimelineEntry struct {
-	EntryID     string    `json:"entry_id"`
-	FeedName    string    `json:"feed_name"`
-	Title       string    `json:"title"`
-	Description string    `json:"description"`
-	URL         string    `json:"url"`
-	PublishDate time.Time `json:"publish_date"`
+	if err := s.timeline.DeleteSubscription(ctx, id); err != nil {
+		return err
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+	return nil
 }
 
 func (s Server) getTimeline(w http.ResponseWriter, r *http.Request) error {
@@ -232,7 +206,7 @@ func (s Server) getTimeline(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	// Build timeline entries
-	items := make([]TimelineEntry, 0, len(tlEnts))
+	items := make([]apiv1.TimelineEntry, 0, len(tlEnts))
 	for _, tlEntry := range tlEnts {
 		var (
 			feedEntry = feedEntriesByID[tlEntry.FeedEntryID]
@@ -243,7 +217,7 @@ func (s Server) getTimeline(w http.ResponseWriter, r *http.Request) error {
 			feedTitle = *feed.Title
 		}
 
-		items = append(items, TimelineEntry{
+		items = append(items, apiv1.TimelineEntry{
 			EntryID:     feedEntry.ID,
 			FeedName:    feedTitle,
 			Title:       feedEntry.Title,
@@ -254,22 +228,12 @@ func (s Server) getTimeline(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	// Build pagination metadata
-	resp := TimelineResp{
+	resp := apiv1.TimelineResp{
 		Items:      items,
 		Pagination: calculatePaginationMeta(limit, offset, total),
 	}
 
 	return writeJSON(w, http.StatusOK, resp)
-}
-
-type FeedEntryResp struct {
-	ID            string    `json:"id"`
-	FeedID        string    `json:"feed_id"`
-	URL           string    `json:"url"`
-	Title         string    `json:"title"`
-	Description   string    `json:"description"`
-	CreatedAt     time.Time `json:"created_at"`
-	ReaderContent string    `json:"reader_content"`
 }
 
 func (s Server) getFeedEntry(w http.ResponseWriter, r *http.Request) error {
@@ -314,7 +278,7 @@ func (s Server) getFeedEntry(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	ret := FeedEntryResp{
+	ret := apiv1.FeedEntryResp{
 		ID:            entry.ID,
 		FeedID:        entry.FeedID,
 		URL:           entry.Link,

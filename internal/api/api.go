@@ -16,6 +16,7 @@ import (
 	"go.temporal.io/sdk/client"
 	"golang.org/x/oauth2"
 
+	apiv1 "github.com/jdholdren/seymour/apis/v1"
 	"github.com/jdholdren/seymour/internal/seymour"
 )
 
@@ -67,7 +68,7 @@ type Server struct {
 	*http.Server
 
 	fetchClient    *http.Client
-	entryRespCache *lru.Cache[string, FeedEntryResp]
+	entryRespCache *lru.Cache[string, apiv1.FeedEntryResp]
 
 	feeds    seymour.FeedService
 	timeline seymour.TimelineService
@@ -92,7 +93,7 @@ func NewServer(
 ) *Server {
 	var (
 		r        = errRouter{Router: mux.NewRouter()}
-		cache, _ = lru.New[string, FeedEntryResp](1024)
+		cache, _ = lru.New[string, apiv1.FeedEntryResp](1024)
 	)
 
 	srvr := Server{
@@ -114,7 +115,7 @@ func NewServer(
 			Handler: handlers.CORS(
 				handlers.AllowedOrigins([]string{corsHeader}),
 				handlers.AllowCredentials(),
-				handlers.AllowedMethods([]string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodOptions}),
+				handlers.AllowedMethods([]string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete, http.MethodOptions}),
 				handlers.AllowedHeaders([]string{"content-type"}),
 			)(r),
 		},
@@ -126,6 +127,7 @@ func NewServer(
 	// Subscription management
 	r.HandleFuncE("/api/subscriptions", srvr.postSusbcriptions).Methods(http.MethodPost)
 	r.HandleFuncE("/api/subscriptions", srvr.getSusbcriptions).Methods(http.MethodGet)
+	r.HandleFuncE("/api/subscriptions/{subscriptionID}", srvr.deleteSubscription).Methods(http.MethodDelete)
 
 	// Timeline view
 	r.HandleFuncE("/api/timeline", srvr.getTimeline).Methods(http.MethodGet)
