@@ -12,14 +12,12 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/sym01/htmlsanitizer"
 
-	feedentriesv1 "github.com/jdholdren/seymour/apis/feedentries/v1"
-	subscriptionsv1 "github.com/jdholdren/seymour/apis/subscriptions/v1"
-	timelinev1 "github.com/jdholdren/seymour/apis/timeline/v1"
+	apiv1 "github.com/jdholdren/seymour/apis/v1"
 	"github.com/jdholdren/seymour/internal/seymour"
 	"github.com/jdholdren/seymour/internal/worker"
 )
 
-func validatePostSubscriptionReq(req subscriptionsv1.PostSubscriptionReq) error {
+func validatePostSubscriptionReq(req apiv1.PostSubscriptionReq) error {
 	if req.FeedURL == "" {
 		return seymour.E("feed_url is required", http.StatusBadRequest)
 	}
@@ -27,7 +25,7 @@ func validatePostSubscriptionReq(req subscriptionsv1.PostSubscriptionReq) error 
 	return nil
 }
 
-func apiFeed(f seymour.Feed) subscriptionsv1.FeedResp {
+func apiFeed(f seymour.Feed) apiv1.FeedResp {
 	var (
 		title      string
 		desc       string
@@ -43,7 +41,7 @@ func apiFeed(f seymour.Feed) subscriptionsv1.FeedResp {
 		lastSynced = &f.LastSyncedAt.Time
 	}
 
-	return subscriptionsv1.FeedResp{
+	return apiv1.FeedResp{
 		ID:           f.ID,
 		Title:        title,
 		URL:          f.URL,
@@ -57,7 +55,7 @@ func apiFeed(f seymour.Feed) subscriptionsv1.FeedResp {
 func (s Server) postSusbcriptions(w http.ResponseWriter, r *http.Request) error {
 	var (
 		ctx  = r.Context()
-		body subscriptionsv1.PostSubscriptionReq
+		body apiv1.PostSubscriptionReq
 	)
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		return seymour.E(err, http.StatusBadRequest)
@@ -98,8 +96,8 @@ func (s Server) getSusbcriptions(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	resp := subscriptionsv1.SubscriptionListResp{
-		Subscriptions: []subscriptionsv1.SubscriptionResp{},
+	resp := apiv1.SubscriptionListResp{
+		Subscriptions: []apiv1.SubscriptionResp{},
 	}
 	for _, sub := range subs {
 		// Totally inefficient, yet sufficient:
@@ -122,7 +120,7 @@ func (s Server) getSusbcriptions(w http.ResponseWriter, r *http.Request) error {
 			lastSynced = &feed.LastSyncedAt.Time
 		}
 
-		resp.Subscriptions = append(resp.Subscriptions, subscriptionsv1.SubscriptionResp{
+		resp.Subscriptions = append(resp.Subscriptions, apiv1.SubscriptionResp{
 			ID:              sub.ID,
 			FeedID:          sub.FeedID,
 			CreatedAt:       sub.CreatedAt.Time,
@@ -208,7 +206,7 @@ func (s Server) getTimeline(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	// Build timeline entries
-	items := make([]timelinev1.TimelineEntry, 0, len(tlEnts))
+	items := make([]apiv1.TimelineEntry, 0, len(tlEnts))
 	for _, tlEntry := range tlEnts {
 		var (
 			feedEntry = feedEntriesByID[tlEntry.FeedEntryID]
@@ -219,7 +217,7 @@ func (s Server) getTimeline(w http.ResponseWriter, r *http.Request) error {
 			feedTitle = *feed.Title
 		}
 
-		items = append(items, timelinev1.TimelineEntry{
+		items = append(items, apiv1.TimelineEntry{
 			EntryID:     feedEntry.ID,
 			FeedName:    feedTitle,
 			Title:       feedEntry.Title,
@@ -230,7 +228,7 @@ func (s Server) getTimeline(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	// Build pagination metadata
-	resp := timelinev1.TimelineResp{
+	resp := apiv1.TimelineResp{
 		Items:      items,
 		Pagination: calculatePaginationMeta(limit, offset, total),
 	}
@@ -280,7 +278,7 @@ func (s Server) getFeedEntry(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	ret := feedentriesv1.FeedEntryResp{
+	ret := apiv1.FeedEntryResp{
 		ID:            entry.ID,
 		FeedID:        entry.FeedID,
 		URL:           entry.Link,

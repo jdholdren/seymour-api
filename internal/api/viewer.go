@@ -3,7 +3,7 @@ package api
 import (
 	"net/http"
 
-	viewerv1 "github.com/jdholdren/seymour/apis/viewer/v1"
+	apiv1 "github.com/jdholdren/seymour/apis/v1"
 )
 
 func (s Server) handleViewer(w http.ResponseWriter, r *http.Request) error {
@@ -24,7 +24,7 @@ func (s Server) handleViewer(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	viewerSubs := make(map[string]viewerv1.ViewerSubscription)
+	viewerSubs := make(map[string]apiv1.ViewerSubscription)
 	for _, feed := range feeds {
 		var title, desc string
 		if feed.Title != nil {
@@ -34,14 +34,14 @@ func (s Server) handleViewer(w http.ResponseWriter, r *http.Request) error {
 			desc = *feed.Description
 		}
 
-		viewerSubs[feed.ID] = viewerv1.ViewerSubscription{
+		viewerSubs[feed.ID] = apiv1.ViewerSubscription{
 			Name:        title,
 			FeedID:      feed.ID,
 			Description: desc,
 		}
 	}
 
-	return writeJSON(w, http.StatusOK, viewerv1.Viewer{
+	return writeJSON(w, http.StatusOK, apiv1.Viewer{
 		Subscriptions: viewerSubs,
 	})
 }
