@@ -1,10 +1,13 @@
-.PHONY: start yac up build rb-api rb-worker
+.PHONY: start yac up up-d build rb-api rb-worker
 
 test:
 	go test ./...
 
 up:
 	docker compose up
+
+up-d:
+	docker compose up -d
 
 build:
 	docker compose build

@@ -27,6 +27,7 @@ services:
       - TEMPORAL_HOST_PORT=temporal-server:7233
       - PORT=4444
       - CORS=http://localhost:3000
+      - GITHUB_REDIRECT_URL=http://localhost:4444/api/oauth-callback/gh
     volumes:
       - ./data/citadel:/data/citadel
     depends_on:

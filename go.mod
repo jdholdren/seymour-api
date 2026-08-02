@@ -11,6 +11,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/handlers v1.4.2
 	github.com/gorilla/mux v1.7.4
+	github.com/gorilla/securecookie v1.1.2
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/jmoiron/sqlx v1.4.0
 	github.com/oklog/run v1.2.0
@@ -20,6 +21,7 @@ require (
 	go.temporal.io/api v1.46.0
 	go.temporal.io/sdk v1.34.0
 	golang.org/x/crypto/x509roots/fallback v0.0.0-20250515174705-ebc8e4631531
+	golang.org/x/oauth2 v0.36.0
 	google.golang.org/protobuf v1.36.5
 	modernc.org/sqlite v1.18.1
 )

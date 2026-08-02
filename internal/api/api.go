@@ -10,8 +10,10 @@ import (
 
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+	"github.com/gorilla/securecookie"
 	lru "github.com/hashicorp/golang-lru/v2"
 	"go.temporal.io/sdk/client"
+	"golang.org/x/oauth2"
 
 	"github.com/jdholdren/seymour/internal/seymour"
 )
@@ -68,7 +70,11 @@ type Server struct {
 
 	feeds    seymour.FeedService
 	timeline seymour.TimelineService
+	users    seymour.UserService
 	tempCli  client.Client
+
+	oauthCfg     *oauth2.Config
+	secureCookie *securecookie.SecureCookie
 }
 
 func NewServer(
@@ -76,7 +82,10 @@ func NewServer(
 	corsHeader string,
 	feeds seymour.FeedService,
 	timeline seymour.TimelineService,
+	users seymour.UserService,
 	temporalCli client.Client,
+	oauthCfg *oauth2.Config,
+	sessionHashKey, sessionBlockKey []byte,
 ) *Server {
 	var (
 		r        = errRouter{Router: mux.NewRouter()}
@@ -90,7 +99,10 @@ func NewServer(
 		entryRespCache: cache,
 		feeds:          feeds,
 		timeline:       timeline,
+		users:          users,
 		tempCli:        temporalCli,
+		oauthCfg:       oauthCfg,
+		secureCookie:   securecookie.New(sessionHashKey, sessionBlockKey),
 		Server: &http.Server{
 			Addr:         fmt.Sprintf(":%d", port),
 			ReadTimeout:  5 * time.Second,
@@ -116,6 +128,10 @@ func NewServer(
 
 	// Reader view
 	r.HandleFuncE("/api/feed-entries/{feedEntryID}", srvr.getFeedEntry).Methods(http.MethodGet)
+
+	// GitHub OAuth login
+	r.HandleFuncE("/api/oauth-login/gh", srvr.startGithubLogin).Methods(http.MethodGet)
+	r.HandleFuncE("/api/oauth-callback/gh", srvr.githubOAuthCallback).Methods(http.MethodGet)
 
 	return &srvr
 }
