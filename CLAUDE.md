@@ -26,7 +26,7 @@ Two binaries, both in `cmd/`:
 
 ### Core packages
 
-- **`internal/seymour`** — Domain models and the `Service` interfaces. DB types are defined and reused here across the app. `DBTime` is a custom type for SQLite datetime marshaling using RFC3339.
+- **`internal/seymour`** — Domain models and the `Service` interfaces. DB types are defined and reused here across the app. `DBTime` is a custom type for SQLite datetime marshaling using RFC3339. Errors returned from any `Service` implementation should be a `*seymour.Error` (built via `seymour.E(...)`, or one of the sentinels like `seymour.ErrNotFound`/`seymour.ErrConflict`) whenever possible, rather than a plain `error`, so callers (`internal/api`, `internal/worker`) can rely on `errors.As` to recover the right HTTP status instead of falling back to a generic 500.
 - **`internal/sqlite`** — SQLite implementation of `Service`'s. Uses `sqlx` + `squirrel` query builder. Pure-Go SQLite driver (no CGO): `modernc.org/sqlite`.
 - **`internal/sync`** — RSS feed parsing and sync logic. Parses XML, sanitizes HTML, extracts feed metadata.
 - **`internal/worker`** — Temporal workflows and activities:

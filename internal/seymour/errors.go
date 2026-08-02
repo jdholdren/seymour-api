@@ -7,8 +7,8 @@ import (
 )
 
 var (
-	ErrConflict = errors.New("resource already exists")
-	ErrNotFound = errors.New("resource not found")
+	ErrConflict = E("resource already exists", http.StatusConflict)
+	ErrNotFound = E("resource not found", http.StatusNotFound)
 )
 
 // Error represents a universal error type between the services.
