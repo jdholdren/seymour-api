@@ -1,0 +1,27 @@
+name: OpenAPI spec
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: [main]
+
+jobs:
+  check-spec:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Regenerate openapi.yaml
+        run: make gen-openapi
+
+      - name: Fail if the committed spec is out of date
+        run: |
+          if ! git diff --exit-code -- openapi.yaml; then
+            echo "::error::openapi.yaml is out of date. Run 'make gen-openapi' and commit the result."
+            exit 1
+          fi

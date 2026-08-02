@@ -1,0 +1,276 @@
+openapi: 3.0.3
+info:
+  description: REST API for Seymour, an RSS feed aggregator with a curated timeline.
+  title: Seymour API
+  version: 0.1.0
+paths:
+  /api/feed-entries/{feedEntryID}:
+    get:
+      operationId: getFeedEntry
+      parameters:
+      - in: path
+        name: feedEntryID
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiFeedEntryResp'
+          description: OK
+      summary: Get the full, reader-mode content of a feed entry.
+      tags:
+      - feed-entries
+  /api/logout:
+    post:
+      operationId: logout
+      responses:
+        "204":
+          description: No Content
+      summary: Clear the session cookie.
+      tags:
+      - auth
+  /api/oauth-callback/gh:
+    get:
+      operationId: githubOAuthCallback
+      parameters:
+      - description: Opaque state value echoed back from GitHub, verified against
+          the oauth_state cookie.
+        in: query
+        name: state
+        schema:
+          description: Opaque state value echoed back from GitHub, verified against
+            the oauth_state cookie.
+          type: string
+      - description: Authorization code to exchange for a GitHub access token.
+        in: query
+        name: code
+        schema:
+          description: Authorization code to exchange for a GitHub access token.
+          type: string
+      responses:
+        "302":
+          description: Found
+      summary: 'GitHub OAuth callback: verifies state, ensures the user, sets the
+        session cookie, and redirects to FRONTEND_URL.'
+      tags:
+      - auth
+  /api/oauth-login/gh:
+    get:
+      operationId: startGithubLogin
+      parameters:
+      - description: Path on FRONTEND_URL to send the browser to after login. Defaults
+          to /.
+        in: query
+        name: s
+        schema:
+          description: Path on FRONTEND_URL to send the browser to after login. Defaults
+            to /.
+          type: string
+      responses:
+        "302":
+          description: Found
+      summary: Start GitHub OAuth login; redirects the browser to GitHub.
+      tags:
+      - auth
+  /api/subscriptions:
+    get:
+      operationId: listSubscriptions
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSubscriptionListResp'
+          description: Created
+      summary: List the viewer's subscriptions.
+      tags:
+      - subscriptions
+    post:
+      operationId: createSubscription
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiPostSubscriptionReq'
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiFeedResp'
+          description: Created
+      summary: Subscribe to a feed by URL, triggering the CreateFeed workflow.
+      tags:
+      - subscriptions
+  /api/timeline:
+    get:
+      operationId: getTimeline
+      parameters:
+      - description: Filter the timeline to a single feed.
+        in: query
+        name: feed_id
+        schema:
+          description: Filter the timeline to a single feed.
+          type: string
+      - description: Page size, default 20, max 100.
+        in: query
+        name: limit
+        schema:
+          description: Page size, default 20, max 100.
+          type: integer
+      - description: Pagination offset, default 0.
+        in: query
+        name: offset
+        schema:
+          description: Pagination offset, default 0.
+          type: integer
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiTimelineResp'
+          description: OK
+      summary: Get the paginated, curated timeline of approved entries.
+      tags:
+      - timeline
+  /api/viewer:
+    get:
+      operationId: getViewer
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiViewer'
+          description: OK
+      summary: Get info about the current viewer, including their subscriptions.
+      tags:
+      - viewer
+components:
+  schemas:
+    ApiFeedEntryResp:
+      properties:
+        created_at:
+          format: date-time
+          type: string
+        description:
+          type: string
+        feed_id:
+          type: string
+        id:
+          type: string
+        reader_content:
+          type: string
+        title:
+          type: string
+        url:
+          type: string
+      type: object
+    ApiFeedResp:
+      properties:
+        created_at:
+          format: date-time
+          type: string
+        description:
+          type: string
+        id:
+          type: string
+        last_synced_at:
+          format: date-time
+          nullable: true
+          type: string
+        title:
+          type: string
+        updated_at:
+          format: date-time
+          type: string
+        url:
+          type: string
+      type: object
+    ApiPaginationMeta:
+      properties:
+        limit:
+          type: integer
+        offset:
+          type: integer
+        total:
+          type: integer
+      type: object
+    ApiPostSubscriptionReq:
+      properties:
+        feed_url:
+          type: string
+      type: object
+    ApiSubscriptionListResp:
+      properties:
+        subscriptions:
+          items:
+            $ref: '#/components/schemas/ApiSubscriptionResp'
+          nullable: true
+          type: array
+      type: object
+    ApiSubscriptionResp:
+      properties:
+        created_at:
+          format: date-time
+          type: string
+        feed_description:
+          type: string
+        feed_id:
+          type: string
+        feed_name:
+          type: string
+        id:
+          type: string
+        last_synced:
+          format: date-time
+          nullable: true
+          type: string
+      type: object
+    ApiTimelineEntry:
+      properties:
+        description:
+          type: string
+        entry_id:
+          type: string
+        feed_name:
+          type: string
+        publish_date:
+          format: date-time
+          type: string
+        title:
+          type: string
+        url:
+          type: string
+      type: object
+    ApiTimelineResp:
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/ApiTimelineEntry'
+          nullable: true
+          type: array
+        pagination:
+          $ref: '#/components/schemas/ApiPaginationMeta'
+      type: object
+    ApiViewer:
+      properties:
+        subscriptions:
+          additionalProperties:
+            $ref: '#/components/schemas/ApiViewerSubscription'
+          nullable: true
+          type: object
+      type: object
+    ApiViewerSubscription:
+      properties:
+        description:
+          type: string
+        feed_id:
+          type: string
+        name:
+          type: string
+      type: object
