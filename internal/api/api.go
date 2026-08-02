@@ -66,11 +66,18 @@ type Server struct {
 	fetchClient    *http.Client
 	entryRespCache *lru.Cache[string, FeedEntryResp]
 
-	repo    seymour.Repository
-	tempCli client.Client
+	feeds    seymour.FeedService
+	timeline seymour.TimelineService
+	tempCli  client.Client
 }
 
-func NewServer(port int, corsHeader string, repo seymour.Repository, temporalCli client.Client) *Server {
+func NewServer(
+	port int,
+	corsHeader string,
+	feeds seymour.FeedService,
+	timeline seymour.TimelineService,
+	temporalCli client.Client,
+) *Server {
 	var (
 		r        = errRouter{Router: mux.NewRouter()}
 		cache, _ = lru.New[string, FeedEntryResp](1024)
@@ -81,7 +88,8 @@ func NewServer(port int, corsHeader string, repo seymour.Repository, temporalCli
 			Timeout: 2 * time.Second,
 		},
 		entryRespCache: cache,
-		repo:           repo,
+		feeds:          feeds,
+		timeline:       timeline,
 		tempCli:        temporalCli,
 		Server: &http.Server{
 			Addr:         fmt.Sprintf(":%d", port),

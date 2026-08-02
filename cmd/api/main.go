@@ -84,7 +84,7 @@ func main() {
 	}
 
 	// Create and start the server
-	server := api.NewServer(cfg.Port, cfg.Cors, repo, temporalCli)
+	server := api.NewServer(cfg.Port, cfg.Cors, repo, repo, temporalCli)
 
 	// Set up run group
 	var g run.Group

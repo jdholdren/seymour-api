@@ -15,7 +15,8 @@ import (
 )
 
 type activities struct {
-	repo seymour.Repository
+	feeds    seymour.FeedService
+	timeline seymour.TimelineService
 }
 
 // Instance to make the workflow a bit more readable
@@ -25,7 +26,7 @@ var acts = activities{}
 //
 // Used for batching up the work as the number of feeds grows.
 func (a activities) CountAllFeeds(ctx context.Context) (int, error) {
-	n, err := a.repo.CountAllFeeds(ctx)
+	n, err := a.feeds.CountAllFeeds(ctx)
 	if err != nil {
 		return 0, err
 	}
@@ -37,7 +38,7 @@ func (a activities) CountAllFeeds(ctx context.Context) (int, error) {
 //
 // Useful for batching work across the global set of feeds.
 func (a activities) FeedIDPage(ctx context.Context, offset, pageSize int) ([]string, error) {
-	ids, err := a.repo.FeedIDs(ctx, offset, pageSize)
+	ids, err := a.feeds.FeedIDs(ctx, offset, pageSize)
 	if err != nil {
 		return nil, err
 	}
@@ -47,7 +48,7 @@ func (a activities) FeedIDPage(ctx context.Context, offset, pageSize int) ([]str
 
 // Goes to the url and grabs the RSS feed items.
 func (a activities) SyncFeed(ctx context.Context, feedID string, ignoreRecency bool) error {
-	feed, err := a.repo.Feed(ctx, feedID)
+	feed, err := a.feeds.Feed(ctx, feedID)
 	if err != nil {
 		return err
 	}
@@ -62,14 +63,14 @@ func (a activities) SyncFeed(ctx context.Context, feedID string, ignoreRecency b
 		return temporal.NewApplicationError("error syncing feed", "seyerr", seymour.E(err, http.StatusBadRequest))
 	}
 
-	if err := a.repo.UpdateFeed(ctx, feed.ID, seymour.UpdateFeedArgs{
+	if err := a.feeds.UpdateFeed(ctx, feed.ID, seymour.UpdateFeedArgs{
 		Title:       *feed.Title,
 		Description: *feed.Description,
 		LastSynced:  seymour.DBTime{Time: time.Now()},
 	}); err != nil {
 		return err
 	}
-	if err := a.repo.InsertEntries(ctx, entries); err != nil {
+	if err := a.feeds.InsertEntries(ctx, entries); err != nil {
 		return err
 	}
 
@@ -77,10 +78,10 @@ func (a activities) SyncFeed(ctx context.Context, feedID string, ignoreRecency b
 }
 
 func (a activities) CreateFeed(ctx context.Context, feedURL string) (string, error) {
-	feed, err := a.repo.InsertFeed(ctx, feedURL)
+	feed, err := a.feeds.InsertFeed(ctx, feedURL)
 	if errors.Is(err, seymour.ErrConflict) {
 		// Fetch the feed from the database
-		feed, err = a.repo.FeedByURL(ctx, feedURL)
+		feed, err = a.feeds.FeedByURL(ctx, feedURL)
 		if err != nil {
 			return "", fmt.Errorf("error fetching conflicting feed: %s", err)
 		}
@@ -95,7 +96,7 @@ func (a activities) CreateFeed(ctx context.Context, feedURL string) (string, err
 }
 
 func (a activities) RemoveFeed(ctx context.Context, feedID string) error {
-	if err := a.repo.DeleteFeed(ctx, feedID); err != nil {
+	if err := a.feeds.DeleteFeed(ctx, feedID); err != nil {
 		return fmt.Errorf("error deleting feed: %w", err)
 	}
 
@@ -108,7 +109,7 @@ func (a activities) RemoveFeed(ctx context.Context, feedID string) error {
 func (a activities) InsertMissingTimelineEntries(ctx context.Context) (int, error) {
 	l := activity.GetLogger(ctx)
 
-	missing, err := a.repo.MissingEntries(ctx)
+	missing, err := a.timeline.MissingEntries(ctx)
 	if err != nil {
 		return 0, fmt.Errorf("error finding missing timeline entries: %s", err)
 	}
@@ -117,7 +118,7 @@ func (a activities) InsertMissingTimelineEntries(ctx context.Context) (int, erro
 
 	// Keep track of affected entries
 	for _, m := range missing {
-		if err := a.repo.InsertEntry(ctx, seymour.TimelineEntry{
+		if err := a.timeline.InsertEntry(ctx, seymour.TimelineEntry{
 			FeedEntryID: m.FeedEntryID,
 			Status:      seymour.TimelineEntryStatusRequiresJudgement,
 			FeedID:      m.FeedID,
@@ -131,7 +132,7 @@ func (a activities) InsertMissingTimelineEntries(ctx context.Context) (int, erro
 
 // CountEntriesNeedingJudgement checks the current count of how many entries need judgement.
 func (a activities) CountEntriesNeedingJudgement(ctx context.Context) (uint, error) {
-	entries, err := a.repo.EntriesNeedingJudgement(ctx, 1000)
+	entries, err := a.timeline.EntriesNeedingJudgement(ctx, 1000)
 	if err != nil {
 		return 0, fmt.Errorf("error finding entries needing judgement: %s", err)
 	}
@@ -149,7 +150,7 @@ func (a activities) MarkEntriesAsJudged(ctx context.Context, js judgements) erro
 			status = seymour.TimelineEntryStatusApproved
 		}
 
-		if err := a.repo.UpdateTimelineEntry(ctx, timelineEntryID, status); err != nil {
+		if err := a.timeline.UpdateTimelineEntry(ctx, timelineEntryID, status); err != nil {
 			return fmt.Errorf("error updating timeline entry status: %w", err)
 		}
 	}
