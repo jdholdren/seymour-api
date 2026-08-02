@@ -12,7 +12,7 @@ The judging step is a seam: `activities.JudgeEntries` in `internal/worker/judge.
 
 - `make test` — Run all tests (`go test ./...`)
 - `go test -run TestName ./internal/path/...` — Run a single test
-- `make up` — Start all services via docker compose
+- `make up-d` — Start all services via docker compose, detached (use this one from an agent session — `make up`/`docker compose up` blocks in the foreground and will hang the session)
 - `make build` — Build all Docker images
 - `make rb-api` — Rebuild and restart only the API service
 - `make rb-worker` — Rebuild and restart only the worker service

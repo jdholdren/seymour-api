@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 	"log"
 	"log/slog"
@@ -14,6 +15,8 @@ import (
 	"github.com/sethvargo/go-envconfig"
 	"github.com/sethvargo/go-retry"
 	"go.temporal.io/sdk/client"
+	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/github"
 
 	"net/http"
 
@@ -32,6 +35,13 @@ type config struct {
 
 	Port int    `env:"PORT, default=4444"`
 	Cors string `env:"CORS"`
+
+	GithubClientID     string `env:"GITHUB_CLIENT_ID, required"`
+	GithubClientSecret string `env:"GITHUB_CLIENT_SECRET, required"`
+	GithubRedirectURL  string `env:"GITHUB_REDIRECT_URL, required"`
+
+	SessionHashKey  string `env:"SESSION_HASH_KEY, required"`  // hex-encoded, 32 or 64 bytes
+	SessionBlockKey string `env:"SESSION_BLOCK_KEY, required"` // hex-encoded, 16, 24, or 32 bytes
 }
 
 func main() {
@@ -83,8 +93,35 @@ func main() {
 		log.Fatalln("error ensuring default namespace:", err)
 	}
 
+	oauthCfg := &oauth2.Config{
+		ClientID:     cfg.GithubClientID,
+		ClientSecret: cfg.GithubClientSecret,
+		RedirectURL:  cfg.GithubRedirectURL,
+		Scopes:       []string{"read:user"},
+		Endpoint:     github.Endpoint,
+	}
+
+	sessionHashKey, err := hex.DecodeString(cfg.SessionHashKey)
+	if err != nil {
+		log.Fatalf("error decoding SESSION_HASH_KEY as hex: %s", err)
+	}
+	sessionBlockKey, err := hex.DecodeString(cfg.SessionBlockKey)
+	if err != nil {
+		log.Fatalf("error decoding SESSION_BLOCK_KEY as hex: %s", err)
+	}
+
 	// Create and start the server
-	server := api.NewServer(cfg.Port, cfg.Cors, repo, repo, temporalCli)
+	server := api.NewServer(
+		cfg.Port,
+		cfg.Cors,
+		repo,
+		repo,
+		repo,
+		temporalCli,
+		oauthCfg,
+		sessionHashKey,
+		sessionBlockKey,
+	)
 
 	// Set up run group
 	var g run.Group
