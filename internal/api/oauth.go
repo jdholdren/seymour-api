@@ -145,3 +145,18 @@ func (s Server) githubOAuthCallback(w http.ResponseWriter, r *http.Request) erro
 	http.Redirect(w, r, state.RedirectPath, http.StatusFound)
 	return nil
 }
+
+func (s Server) logout(w http.ResponseWriter, r *http.Request) error {
+	http.SetCookie(w, &http.Cookie{
+		Name:     sessionCookie,
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
+		HttpOnly: true,
+		Secure:   r.TLS != nil,
+		SameSite: http.SameSiteLaxMode,
+	})
+
+	w.WriteHeader(http.StatusNoContent)
+	return nil
+}
