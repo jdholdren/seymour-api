@@ -54,9 +54,13 @@ func apiFeed(f seymour.Feed) apiv1.FeedResp {
 
 func (s Server) postSusbcriptions(w http.ResponseWriter, r *http.Request) error {
 	var (
-		ctx  = r.Context()
-		body apiv1.PostSubscriptionReq
+		ctx    = r.Context()
+		userID = mux.Vars(r)["userID"]
+		body   apiv1.PostSubscriptionReq
 	)
+	if userID != userIDFromContext(ctx) {
+		return seymour.E("forbidden", http.StatusForbidden)
+	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		return seymour.E(err, http.StatusBadRequest)
 	}
@@ -79,7 +83,7 @@ func (s Server) postSusbcriptions(w http.ResponseWriter, r *http.Request) error 
 	}
 
 	// Add the feed to the subscriptions
-	if err := s.timeline.CreateSubscription(ctx, feed.ID); err != nil {
+	if err := s.timeline.CreateSubscription(ctx, userID, feed.ID); err != nil {
 		return err
 	}
 
@@ -88,10 +92,14 @@ func (s Server) postSusbcriptions(w http.ResponseWriter, r *http.Request) error 
 
 func (s Server) getSusbcriptions(w http.ResponseWriter, r *http.Request) error {
 	var (
-		ctx = r.Context()
+		ctx    = r.Context()
+		userID = mux.Vars(r)["userID"]
 	)
+	if userID != userIDFromContext(ctx) {
+		return seymour.E("forbidden", http.StatusForbidden)
+	}
 
-	subs, err := s.timeline.AllSubscriptions(ctx)
+	subs, err := s.timeline.AllSubscriptions(ctx, userID)
 	if err != nil {
 		return err
 	}
@@ -138,6 +146,14 @@ func (s Server) deleteSubscription(w http.ResponseWriter, r *http.Request) error
 		id  = mux.Vars(r)["subscriptionID"]
 	)
 
+	sub, err := s.timeline.Subscription(ctx, id)
+	if err != nil {
+		return err
+	}
+	if sub.UserID != userIDFromContext(ctx) {
+		return seymour.E("forbidden", http.StatusForbidden)
+	}
+
 	if err := s.timeline.DeleteSubscription(ctx, id); err != nil {
 		return err
 	}
@@ -149,13 +165,18 @@ func (s Server) deleteSubscription(w http.ResponseWriter, r *http.Request) error
 func (s Server) getTimeline(w http.ResponseWriter, r *http.Request) error {
 	var (
 		ctx    = r.Context()
+		userID = mux.Vars(r)["userID"]
 		feedID = r.URL.Query().Get("feed_id")
 	)
+	if userID != userIDFromContext(ctx) {
+		return seymour.E("forbidden", http.StatusForbidden)
+	}
 
 	// Parse pagination parameters
 	limit, offset := parsePaginationParams(r, 20, 100) // default=20, max=100
 
 	args := seymour.TimelineEntriesArgs{
+		UserID: userID,
 		Status: seymour.TimelineEntryStatusApproved,
 		FeedID: feedID,
 		Limit:  uint64(limit),

@@ -24,16 +24,18 @@ CREATE TABLE feed_entries (
 	link VARCHAR(256) NOT NULL
 );
 
--- Subscriptions table: tracks which feeds are subscribed to (single-tenant)
+-- Subscriptions table: tracks which feeds a user is subscribed to
 CREATE TABLE subscriptions (
 	id TEXT PRIMARY KEY,
+	user_id TEXT NOT NULL,
 	feed_id TEXT NOT NULL,
 	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- Timeline entries table: curated feed entries for the timeline (single-tenant)
+-- Timeline entries table: curated feed entries for a user's timeline
 CREATE TABLE timeline_entries (
 	id TEXT PRIMARY KEY,
+	user_id TEXT NOT NULL,
 	feed_entry_id TEXT NOT NULL,
 	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	status TEXT NOT NULL,
@@ -41,9 +43,10 @@ CREATE TABLE timeline_entries (
 );
 
 -- Indexes for subscriptions
-CREATE UNIQUE INDEX idx_subscriptions_feed_id ON subscriptions(feed_id);
+CREATE UNIQUE INDEX idx_subscriptions_user_feed ON subscriptions(user_id, feed_id);
 
 -- Indexes for timeline entries
 CREATE INDEX idx_timeline_entries_status ON timeline_entries(status);
+CREATE INDEX idx_timeline_entries_user_status ON timeline_entries(user_id, status);
 CREATE INDEX idx_timeline_entries_status_approved ON timeline_entries(status) WHERE status = 'approved';
 CREATE INDEX idx_timeline_entries_status_requires_judgement ON timeline_entries(status) WHERE status = 'requires_judgement';

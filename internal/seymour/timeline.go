@@ -5,8 +5,9 @@ import "context"
 // TimelineService provides data operations for the curated timeline and
 // the subscriptions that feed it.
 type TimelineService interface {
-	CreateSubscription(ctx context.Context, feedID string) error
-	AllSubscriptions(ctx context.Context) ([]Subscription, error)
+	CreateSubscription(ctx context.Context, userID, feedID string) error
+	AllSubscriptions(ctx context.Context, userID string) ([]Subscription, error)
+	Subscription(ctx context.Context, id string) (Subscription, error)
 	DeleteSubscription(ctx context.Context, id string) error
 	MissingEntries(ctx context.Context) ([]MissingEntry, error)
 	EntriesNeedingJudgement(ctx context.Context, limit uint) ([]TimelineEntry, error)
@@ -19,6 +20,7 @@ type TimelineService interface {
 // Subscription represents a subscription to a feed.
 type Subscription struct {
 	ID        string `db:"id"`
+	UserID    string `db:"user_id"`
 	FeedID    string `db:"feed_id"`
 	CreatedAt DBTime `db:"created_at"`
 }
@@ -26,6 +28,7 @@ type Subscription struct {
 // TimelineEntry represents an entry in the timeline.
 type TimelineEntry struct {
 	ID          string `db:"id"`
+	UserID      string `db:"user_id"`
 	FeedEntryID string `db:"feed_entry_id"`
 	CreatedAt   DBTime `db:"created_at"`
 	FeedID      string `db:"feed_id"`
@@ -34,14 +37,16 @@ type TimelineEntry struct {
 	Status TimelineEntryStatus `db:"status"`
 }
 
-// MissingEntry is an instance where a feed entry should have been added to the timeline.
+// MissingEntry is an instance where a feed entry should have been added to a user's timeline.
 type MissingEntry struct {
+	UserID      string `db:"user_id"`
 	FeedEntryID string `db:"feed_entry_id"`
 	FeedID      string `db:"feed_id"`
 }
 
 // TimelineEntriesArgs holds arguments for filtering timeline entries.
 type TimelineEntriesArgs struct {
+	UserID string              // Required: scope to a single user
 	Status TimelineEntryStatus // To optionally filter by status
 	FeedID string              // To optionally filter by feed
 	Limit  uint64              // To optionally limit the number of entries returned
