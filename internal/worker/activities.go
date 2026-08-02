@@ -119,6 +119,7 @@ func (a activities) InsertMissingTimelineEntries(ctx context.Context) (int, erro
 	// Keep track of affected entries
 	for _, m := range missing {
 		if err := a.timeline.InsertEntry(ctx, seymour.TimelineEntry{
+			UserID:      m.UserID,
 			FeedEntryID: m.FeedEntryID,
 			Status:      seymour.TimelineEntryStatusRequiresJudgement,
 			FeedID:      m.FeedID,

@@ -4,8 +4,9 @@
 -- Drop indexes first
 DROP INDEX IF EXISTS idx_timeline_entries_status_requires_judgement;
 DROP INDEX IF EXISTS idx_timeline_entries_status_approved;
+DROP INDEX IF EXISTS idx_timeline_entries_user_status;
 DROP INDEX IF EXISTS idx_timeline_entries_status;
-DROP INDEX IF EXISTS idx_subscriptions_feed_id;
+DROP INDEX IF EXISTS idx_subscriptions_user_feed;
 
 -- Drop tables
 DROP TABLE IF EXISTS timeline_entries;

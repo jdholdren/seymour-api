@@ -9,7 +9,19 @@ import (
 func (s Server) handleViewer(w http.ResponseWriter, r *http.Request) error {
 	ctx := r.Context()
 
-	subs, err := s.timeline.AllSubscriptions(ctx)
+	userID, ok := s.sessionUserID(r)
+	if !ok {
+		return writeJSON(w, http.StatusOK, apiv1.Viewer{
+			Subscriptions: map[string]apiv1.ViewerSubscription{},
+		})
+	}
+
+	user, err := s.users.User(ctx, userID)
+	if err != nil {
+		return err
+	}
+
+	subs, err := s.timeline.AllSubscriptions(ctx, userID)
 	if err != nil {
 		return err
 	}
@@ -41,7 +53,16 @@ func (s Server) handleViewer(w http.ResponseWriter, r *http.Request) error {
 		}
 	}
 
+	var preferredName string
+	if user.PreferredName != nil {
+		preferredName = *user.PreferredName
+	}
+
 	return writeJSON(w, http.StatusOK, apiv1.Viewer{
+		User: &apiv1.ViewerUser{
+			ID:            user.ID,
+			PreferredName: preferredName,
+		},
 		Subscriptions: viewerSubs,
 	})
 }

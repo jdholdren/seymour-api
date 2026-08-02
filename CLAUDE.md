@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Seymour is an RSS feed aggregator with a curated timeline, moving from single-tenant to multi-tenant. Users subscribe to RSS feeds, and a Temporal worker syncs feeds, builds a timeline, then judges entries to decide what gets surfaced. The frontend is a separate project (expected at localhost:3000).
 
-A `UserService` (`internal/seymour/user.go`, implemented in `internal/sqlite/users.go`) and GitHub OAuth login (`internal/api/oauth.go`) exist, but nothing in the API enforces auth yet — the session cookie is issued/cleared, but no middleware reads it and there's no "who am I" endpoint.
+A `UserService` (`internal/seymour/user.go`, implemented in `internal/sqlite/users.go`) and GitHub OAuth login (`internal/api/oauth.go`) exist. `internal/api/auth.go`'s `requireAuth` middleware enforces the session cookie on every route except `/api/viewer` (which doubles as the "who am I" check), `/api/oauth-login/gh`, `/api/oauth-callback/gh`, and `/api/logout`. `subscriptions`/`timeline_entries` carry a `user_id`; `feeds`/`feed_entries` stay a shared global cache (deduped by URL) with no owner.
 
 The judging step is a seam: `activities.JudgeEntries` in `internal/worker/judge.go` currently approves every entry. Replace its body to introduce a real curation strategy — the surrounding workflow, batching, and persistence already exist.
 
@@ -60,11 +60,14 @@ SQLite with connection flags `-txlock=immediate -busy_timeout=5000`. Migrations 
 
 ## API Endpoints
 
-- `GET /api/viewer` — Viewer info
-- `POST /api/subscriptions` — Subscribe to feed (triggers CreateFeed workflow)
-- `GET /api/subscriptions` — List subscriptions
-- `GET /api/timeline` — Paginated curated timeline (supports `feed_id` filter)
-- `GET /api/feed-entries/{feedEntryID}` — Full article content via go-readability
+All routes below except `/api/viewer`, `/api/oauth-login/gh`, `/api/oauth-callback/gh`, and `/api/logout` require a valid `session` cookie (enforced by `requireAuth` middleware in `internal/api/auth.go`).
+
+- `GET /api/viewer` — Viewer info; works logged-out too (returns empty subscriptions, no `user` field)
+- `POST /api/users/{userID}/subscriptions` — Subscribe to feed (triggers CreateFeed workflow). `{userID}` must match the session's user
+- `GET /api/users/{userID}/subscriptions` — List subscriptions for that user. `{userID}` must match the session's user
+- `DELETE /api/subscriptions/{subscriptionID}` — Delete a subscription; ownership is checked by fetching the subscription and comparing its `user_id` to the session
+- `GET /api/users/{userID}/timeline` — Paginated curated timeline for that user (supports `feed_id` filter). `{userID}` must match the session's user
+- `GET /api/feed-entries/{feedEntryID}` — Full article content via go-readability; any authenticated user can read any entry (feeds/entries are a shared global cache, not user-owned)
 - `GET /api/oauth-login/gh` — Start GitHub OAuth login; redirects to GitHub. Accepts `?s=<path>` for where to send the browser (on `FRONTEND_URL`) after login succeeds, defaults to `/`
 - `GET /api/oauth-callback/gh` — GitHub OAuth callback; verifies state, ensures the user via `UserService`, sets the `session` cookie, redirects to `FRONTEND_URL` + the requested path
 - `POST /api/logout` — Clears the `session` cookie

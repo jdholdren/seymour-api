@@ -122,23 +122,28 @@ func NewServer(
 	}
 
 	r.Use(accessLogMiddleware) // Log everything
+
+	// Public routes: viewer works logged-out (it's the "who am I" check), and
+	// the oauth/logout routes obviously can't require a session yet.
 	r.HandleFuncE("/api/viewer", srvr.handleViewer).Methods(http.MethodGet)
-
-	// Subscription management
-	r.HandleFuncE("/api/subscriptions", srvr.postSusbcriptions).Methods(http.MethodPost)
-	r.HandleFuncE("/api/subscriptions", srvr.getSusbcriptions).Methods(http.MethodGet)
-	r.HandleFuncE("/api/subscriptions/{subscriptionID}", srvr.deleteSubscription).Methods(http.MethodDelete)
-
-	// Timeline view
-	r.HandleFuncE("/api/timeline", srvr.getTimeline).Methods(http.MethodGet)
-
-	// Reader view
-	r.HandleFuncE("/api/feed-entries/{feedEntryID}", srvr.getFeedEntry).Methods(http.MethodGet)
-
-	// GitHub OAuth login
 	r.HandleFuncE("/api/oauth-login/gh", srvr.startGithubLogin).Methods(http.MethodGet)
 	r.HandleFuncE("/api/oauth-callback/gh", srvr.githubOAuthCallback).Methods(http.MethodGet)
 	r.HandleFuncE("/api/logout", srvr.logout).Methods(http.MethodPost)
+
+	// Everything else requires a valid session.
+	protected := errRouter{Router: r.PathPrefix("/api").Subrouter()}
+	protected.Use(srvr.requireAuth)
+
+	// Subscription management
+	protected.HandleFuncE("/users/{userID}/subscriptions", srvr.postSusbcriptions).Methods(http.MethodPost)
+	protected.HandleFuncE("/users/{userID}/subscriptions", srvr.getSusbcriptions).Methods(http.MethodGet)
+	protected.HandleFuncE("/subscriptions/{subscriptionID}", srvr.deleteSubscription).Methods(http.MethodDelete)
+
+	// Timeline view
+	protected.HandleFuncE("/users/{userID}/timeline", srvr.getTimeline).Methods(http.MethodGet)
+
+	// Reader view
+	protected.HandleFuncE("/feed-entries/{feedEntryID}", srvr.getFeedEntry).Methods(http.MethodGet)
 
 	return &srvr
 }

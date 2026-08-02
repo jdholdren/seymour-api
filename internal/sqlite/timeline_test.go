@@ -15,17 +15,30 @@ func TestDeleteSubscription(t *testing.T) {
 	repo := testRepo(t)
 	ctx := context.Background()
 
-	require.NoError(t, repo.CreateSubscription(ctx, "feed-1"))
+	require.NoError(t, repo.CreateSubscription(ctx, "user-1", "feed-1"))
 
-	subs, err := repo.AllSubscriptions(ctx)
+	subs, err := repo.AllSubscriptions(ctx, "user-1")
 	require.NoError(t, err)
 	require.Len(t, subs, 1)
 
 	require.NoError(t, repo.DeleteSubscription(ctx, subs[0].ID))
 
-	subs, err = repo.AllSubscriptions(ctx)
+	subs, err = repo.AllSubscriptions(ctx, "user-1")
 	require.NoError(t, err)
 	assert.Empty(t, subs)
+}
+
+func TestAllSubscriptions_ScopedByUser(t *testing.T) {
+	repo := testRepo(t)
+	ctx := context.Background()
+
+	require.NoError(t, repo.CreateSubscription(ctx, "user-1", "feed-1"))
+	require.NoError(t, repo.CreateSubscription(ctx, "user-2", "feed-1"))
+
+	subs, err := repo.AllSubscriptions(ctx, "user-1")
+	require.NoError(t, err)
+	require.Len(t, subs, 1)
+	assert.Equal(t, "user-1", subs[0].UserID)
 }
 
 func TestDeleteSubscription_NotFound(t *testing.T) {

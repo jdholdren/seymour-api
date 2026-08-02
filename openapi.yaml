@@ -279,6 +279,8 @@ components:
             $ref: '#/components/schemas/V1ViewerSubscription'
           nullable: true
           type: object
+        user:
+          $ref: '#/components/schemas/V1ViewerUser'
       type: object
     V1ViewerSubscription:
       properties:
@@ -287,5 +289,12 @@ components:
         feed_id:
           type: string
         name:
+          type: string
+      type: object
+    V1ViewerUser:
+      properties:
+        id:
+          type: string
+        preferred_name:
           type: string
       type: object
