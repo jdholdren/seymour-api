@@ -37,6 +37,25 @@ func (r Repo) AllSubscriptions(ctx context.Context) ([]seymour.Subscription, err
 	return subs, nil
 }
 
+func (r Repo) DeleteSubscription(ctx context.Context, id string) error {
+	const q = `DELETE FROM subscriptions WHERE id = ?;`
+
+	res, err := r.db.ExecContext(ctx, q, id)
+	if err != nil {
+		return fmt.Errorf("error deleting subscription: %w", err)
+	}
+
+	n, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("error checking rows affected: %w", err)
+	}
+	if n == 0 {
+		return seymour.ErrNotFound
+	}
+
+	return nil
+}
+
 func (r Repo) Subscription(ctx context.Context, feedID string) (*seymour.Subscription, error) {
 	const q = `SELECT * FROM subscriptions WHERE feed_id = ?;`
 

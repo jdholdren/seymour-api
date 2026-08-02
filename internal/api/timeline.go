@@ -158,6 +158,20 @@ func (s Server) getSusbcriptions(w http.ResponseWriter, r *http.Request) error {
 	return writeJSON(w, http.StatusCreated, resp)
 }
 
+func (s Server) deleteSubscription(w http.ResponseWriter, r *http.Request) error {
+	var (
+		ctx = r.Context()
+		id  = mux.Vars(r)["subscriptionID"]
+	)
+
+	if err := s.timeline.DeleteSubscription(ctx, id); err != nil {
+		return err
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+	return nil
+}
+
 type TimelineResp struct {
 	Items      []TimelineEntry `json:"items"`
 	Pagination paginationMeta  `json:"pagination"`
