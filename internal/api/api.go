@@ -132,6 +132,7 @@ func NewServer(
 	// GitHub OAuth login
 	r.HandleFuncE("/api/oauth-login/gh", srvr.startGithubLogin).Methods(http.MethodGet)
 	r.HandleFuncE("/api/oauth-callback/gh", srvr.githubOAuthCallback).Methods(http.MethodGet)
+	r.HandleFuncE("/api/logout", srvr.logout).Methods(http.MethodPost)
 
 	return &srvr
 }
