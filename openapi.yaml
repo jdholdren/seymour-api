@@ -18,7 +18,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiFeedEntryResp'
+                $ref: '#/components/schemas/V1FeedEntryResp'
           description: OK
       summary: Get the full, reader-mode content of a feed entry.
       tags:
@@ -83,7 +83,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiSubscriptionListResp'
+                $ref: '#/components/schemas/V1SubscriptionListResp'
           description: Created
       summary: List the viewer's subscriptions.
       tags:
@@ -94,15 +94,30 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ApiPostSubscriptionReq'
+              $ref: '#/components/schemas/V1PostSubscriptionReq'
       responses:
         "201":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiFeedResp'
+                $ref: '#/components/schemas/V1FeedResp'
           description: Created
       summary: Subscribe to a feed by URL, triggering the CreateFeed workflow.
+      tags:
+      - subscriptions
+  /api/subscriptions/{subscriptionID}:
+    delete:
+      operationId: deleteSubscription
+      parameters:
+      - in: path
+        name: subscriptionID
+        required: true
+        schema:
+          type: string
+      responses:
+        "204":
+          description: No Content
+      summary: Unsubscribe from a feed.
       tags:
       - subscriptions
   /api/timeline:
@@ -132,7 +147,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiTimelineResp'
+                $ref: '#/components/schemas/V1TimelineResp'
           description: OK
       summary: Get the paginated, curated timeline of approved entries.
       tags:
@@ -145,14 +160,14 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiViewer'
+                $ref: '#/components/schemas/V1Viewer'
           description: OK
       summary: Get info about the current viewer, including their subscriptions.
       tags:
       - viewer
 components:
   schemas:
-    ApiFeedEntryResp:
+    V1FeedEntryResp:
       properties:
         created_at:
           format: date-time
@@ -170,7 +185,7 @@ components:
         url:
           type: string
       type: object
-    ApiFeedResp:
+    V1FeedResp:
       properties:
         created_at:
           format: date-time
@@ -191,7 +206,7 @@ components:
         url:
           type: string
       type: object
-    ApiPaginationMeta:
+    V1PaginationMeta:
       properties:
         limit:
           type: integer
@@ -200,20 +215,20 @@ components:
         total:
           type: integer
       type: object
-    ApiPostSubscriptionReq:
+    V1PostSubscriptionReq:
       properties:
         feed_url:
           type: string
       type: object
-    ApiSubscriptionListResp:
+    V1SubscriptionListResp:
       properties:
         subscriptions:
           items:
-            $ref: '#/components/schemas/ApiSubscriptionResp'
+            $ref: '#/components/schemas/V1SubscriptionResp'
           nullable: true
           type: array
       type: object
-    ApiSubscriptionResp:
+    V1SubscriptionResp:
       properties:
         created_at:
           format: date-time
@@ -231,7 +246,7 @@ components:
           nullable: true
           type: string
       type: object
-    ApiTimelineEntry:
+    V1TimelineEntry:
       properties:
         description:
           type: string
@@ -247,25 +262,25 @@ components:
         url:
           type: string
       type: object
-    ApiTimelineResp:
+    V1TimelineResp:
       properties:
         items:
           items:
-            $ref: '#/components/schemas/ApiTimelineEntry'
+            $ref: '#/components/schemas/V1TimelineEntry'
           nullable: true
           type: array
         pagination:
-          $ref: '#/components/schemas/ApiPaginationMeta'
+          $ref: '#/components/schemas/V1PaginationMeta'
       type: object
-    ApiViewer:
+    V1Viewer:
       properties:
         subscriptions:
           additionalProperties:
-            $ref: '#/components/schemas/ApiViewerSubscription'
+            $ref: '#/components/schemas/V1ViewerSubscription'
           nullable: true
           type: object
       type: object
-    ApiViewerSubscription:
+    V1ViewerSubscription:
       properties:
         description:
           type: string

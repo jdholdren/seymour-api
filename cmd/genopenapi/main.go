@@ -1,8 +1,8 @@
 // Command genopenapi generates the OpenAPI 3.0 spec for the Seymour API from
-// the request/response types already defined in internal/api, using
-// reflection (github.com/swaggest/openapi-go). It's meant to be regenerated
-// whenever the API's wire types or routes change (see `make gen-openapi`),
-// and CI checks that the committed spec matches what this program produces.
+// the request/response types already defined in apis/v1, using reflection
+// (github.com/swaggest/openapi-go). It's meant to be regenerated whenever the
+// API's wire types or routes change (see `make gen-openapi`), and CI checks
+// that the committed spec matches what this program produces.
 package main
 
 import (
@@ -14,7 +14,7 @@ import (
 	"github.com/swaggest/openapi-go"
 	"github.com/swaggest/openapi-go/openapi3"
 
-	"github.com/jdholdren/seymour/internal/api"
+	apiv1 "github.com/jdholdren/seymour/apis/v1"
 )
 
 // Doc-only structs describing query/path parameters. These mirror what the
@@ -40,6 +40,10 @@ type (
 		State string `query:"state" description:"Opaque state value echoed back from GitHub, verified against the oauth_state cookie."`
 		Code  string `query:"code" description:"Authorization code to exchange for a GitHub access token."`
 	}
+
+	subscriptionPath struct {
+		SubscriptionID string `path:"subscriptionID"`
+	}
 )
 
 func main() {
@@ -54,7 +58,7 @@ func main() {
 
 	type op struct {
 		method, path, id, summary, tag string
-		reqBody, reqParams, resp       interface{}
+		reqBody, reqParams, resp       any
 		status                         int
 	}
 
@@ -62,27 +66,32 @@ func main() {
 		{
 			method: http.MethodGet, path: "/api/viewer", id: "getViewer", tag: "viewer",
 			summary: "Get info about the current viewer, including their subscriptions.",
-			resp:    api.Viewer{}, status: http.StatusOK,
+			resp:    apiv1.Viewer{}, status: http.StatusOK,
 		},
 		{
 			method: http.MethodPost, path: "/api/subscriptions", id: "createSubscription", tag: "subscriptions",
 			summary: "Subscribe to a feed by URL, triggering the CreateFeed workflow.",
-			reqBody: api.PostSubscriptionReq{}, resp: api.FeedResp{}, status: http.StatusCreated,
+			reqBody: apiv1.PostSubscriptionReq{}, resp: apiv1.FeedResp{}, status: http.StatusCreated,
 		},
 		{
 			method: http.MethodGet, path: "/api/subscriptions", id: "listSubscriptions", tag: "subscriptions",
 			summary: "List the viewer's subscriptions.",
-			resp:    api.SubscriptionListResp{}, status: http.StatusCreated,
+			resp:    apiv1.SubscriptionListResp{}, status: http.StatusCreated,
+		},
+		{
+			method: http.MethodDelete, path: "/api/subscriptions/{subscriptionID}", id: "deleteSubscription", tag: "subscriptions",
+			summary:   "Unsubscribe from a feed.",
+			reqParams: subscriptionPath{}, status: http.StatusNoContent,
 		},
 		{
 			method: http.MethodGet, path: "/api/timeline", id: "getTimeline", tag: "timeline",
 			summary:   "Get the paginated, curated timeline of approved entries.",
-			reqParams: timelineQuery{}, resp: api.TimelineResp{}, status: http.StatusOK,
+			reqParams: timelineQuery{}, resp: apiv1.TimelineResp{}, status: http.StatusOK,
 		},
 		{
 			method: http.MethodGet, path: "/api/feed-entries/{feedEntryID}", id: "getFeedEntry", tag: "feed-entries",
 			summary:   "Get the full, reader-mode content of a feed entry.",
-			reqParams: feedEntryPath{}, resp: api.FeedEntryResp{}, status: http.StatusOK,
+			reqParams: feedEntryPath{}, resp: apiv1.FeedEntryResp{}, status: http.StatusOK,
 		},
 		{
 			method: http.MethodGet, path: "/api/oauth-login/gh", id: "startGithubLogin", tag: "auth",
