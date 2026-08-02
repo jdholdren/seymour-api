@@ -109,7 +109,7 @@ func (s Server) githubOAuthCallback(w http.ResponseWriter, r *http.Request) erro
 	if err != nil {
 		return seymour.E(err, http.StatusBadGateway)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return seymour.E("error fetching github user", http.StatusBadGateway)
