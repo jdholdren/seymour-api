@@ -17,6 +17,7 @@ require (
 	github.com/oklog/run v1.2.0
 	github.com/sethvargo/go-retry v0.3.0
 	github.com/stretchr/testify v1.10.0
+	github.com/swaggest/openapi-go v0.2.61
 	github.com/sym01/htmlsanitizer v1.1.0
 	go.temporal.io/api v1.46.0
 	go.temporal.io/sdk v1.34.0
@@ -48,6 +49,8 @@ require (
 	github.com/remyoudompheng/bigfft v0.0.0-20200410134404-eec4a21b6bb0 // indirect
 	github.com/robfig/cron v1.2.0 // indirect
 	github.com/stretchr/objx v0.5.2 // indirect
+	github.com/swaggest/jsonschema-go v0.3.78 // indirect
+	github.com/swaggest/refl v1.4.0 // indirect
 	go.uber.org/atomic v1.7.0 // indirect
 	golang.org/x/mod v0.30.0 // indirect
 	golang.org/x/net v0.47.0 // indirect
@@ -59,6 +62,7 @@ require (
 	google.golang.org/genproto/googleapis/api v0.0.0-20240827150818-7e3bb234dfed // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240827150818-7e3bb234dfed // indirect
 	google.golang.org/grpc v1.66.0 // indirect
+	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	lukechampine.com/uint128 v1.2.0 // indirect
 	modernc.org/cc/v3 v3.36.3 // indirect

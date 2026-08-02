@@ -1,7 +1,10 @@
-.PHONY: start yac up up-d build rb-api rb-worker
+.PHONY: start yac up up-d build rb-api rb-worker gen-openapi
 
 test:
 	go test ./...
+
+gen-openapi:
+	go run ./cmd/genopenapi -out openapi.yaml
 
 up:
 	docker compose up
