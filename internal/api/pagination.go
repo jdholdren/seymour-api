@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strconv"
 
-	timelinev1 "github.com/jdholdren/seymour/apis/timeline/v1"
+	apiv1 "github.com/jdholdren/seymour/apis/v1"
 )
 
 // parsePaginationParams parses pagination parameters from an HTTP request.
@@ -28,8 +28,8 @@ func parsePaginationParams(r *http.Request, defaultLimit, maxLimit int) (int, in
 }
 
 // calculatePaginationMeta builds pagination metadata for responses.
-func calculatePaginationMeta(limit, offset, total int) timelinev1.PaginationMeta {
-	return timelinev1.PaginationMeta{
+func calculatePaginationMeta(limit, offset, total int) apiv1.PaginationMeta {
+	return apiv1.PaginationMeta{
 		Limit:  limit,
 		Offset: offset,
 		Total:  total,

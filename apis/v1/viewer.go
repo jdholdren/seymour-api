@@ -1,5 +1,3 @@
-// Package v1 contains the wire types for the viewer API group, at version
-// v1. See apis/subscriptions/v1 for the rationale on this layout.
 package v1
 
 // Viewer is the response of GET /api/viewer.

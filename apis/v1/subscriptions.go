@@ -1,9 +1,3 @@
-// Package v1 contains the wire types (requests and responses) for the
-// subscriptions API group, at version v1. It mirrors the way k8s.io/api
-// lays out versioned API groups (k8s.io/api/<group>/<version>): this
-// package holds plain structs with JSON tags and no business logic, so it
-// can be imported by external Go callers (e.g. a generated client) without
-// pulling in anything under internal/.
 package v1
 
 import "time"
