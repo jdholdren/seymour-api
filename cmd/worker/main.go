@@ -71,7 +71,7 @@ func main() {
 	}
 
 	// Create the worker
-	w, err := seyworker.NewWorker(ctx, repo, temporalCli)
+	w, err := seyworker.NewWorker(ctx, repo, repo, temporalCli)
 	if err != nil {
 		log.Fatalf("Failed to create worker: %v", err)
 	}

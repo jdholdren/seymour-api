@@ -18,7 +18,7 @@ func (a activities) JudgeEntries(ctx context.Context) (judgements, error) {
 	l := activity.GetLogger(ctx)
 
 	// Need to limit this in case we pull too many results.
-	entries, err := a.repo.EntriesNeedingJudgement(ctx, judgeBatchSize)
+	entries, err := a.timeline.EntriesNeedingJudgement(ctx, judgeBatchSize)
 	if err != nil {
 		return nil, fmt.Errorf("error finding needing judgement timeline entries: %s", err)
 	}

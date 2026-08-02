@@ -19,7 +19,7 @@ type (
 func (s Server) handleViewer(w http.ResponseWriter, r *http.Request) error {
 	ctx := r.Context()
 
-	subs, err := s.repo.AllSubscriptions(ctx)
+	subs, err := s.timeline.AllSubscriptions(ctx)
 	if err != nil {
 		return err
 	}
@@ -29,7 +29,7 @@ func (s Server) handleViewer(w http.ResponseWriter, r *http.Request) error {
 		feedIDs = append(feedIDs, sub.FeedID)
 	}
 
-	feeds, err := s.repo.Feeds(ctx, feedIDs)
+	feeds, err := s.feeds.Feeds(ctx, feedIDs)
 	if err != nil {
 		return err
 	}
