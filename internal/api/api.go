@@ -114,7 +114,7 @@ func NewServer(
 			Handler: handlers.CORS(
 				handlers.AllowedOrigins([]string{corsHeader}),
 				handlers.AllowCredentials(),
-				handlers.AllowedMethods([]string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodOptions}),
+				handlers.AllowedMethods([]string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete, http.MethodOptions}),
 				handlers.AllowedHeaders([]string{"content-type"}),
 			)(r),
 		},
@@ -126,6 +126,7 @@ func NewServer(
 	// Subscription management
 	r.HandleFuncE("/api/subscriptions", srvr.postSusbcriptions).Methods(http.MethodPost)
 	r.HandleFuncE("/api/subscriptions", srvr.getSusbcriptions).Methods(http.MethodGet)
+	r.HandleFuncE("/api/subscriptions/{subscriptionID}", srvr.deleteSubscription).Methods(http.MethodDelete)
 
 	// Timeline view
 	r.HandleFuncE("/api/timeline", srvr.getTimeline).Methods(http.MethodGet)

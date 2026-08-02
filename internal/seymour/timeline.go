@@ -7,6 +7,7 @@ import "context"
 type TimelineService interface {
 	CreateSubscription(ctx context.Context, feedID string) error
 	AllSubscriptions(ctx context.Context) ([]Subscription, error)
+	DeleteSubscription(ctx context.Context, id string) error
 	MissingEntries(ctx context.Context) ([]MissingEntry, error)
 	EntriesNeedingJudgement(ctx context.Context, limit uint) ([]TimelineEntry, error)
 	InsertEntry(ctx context.Context, entry TimelineEntry) error
