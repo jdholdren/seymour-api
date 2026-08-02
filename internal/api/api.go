@@ -16,6 +16,7 @@ import (
 	"go.temporal.io/sdk/client"
 	"golang.org/x/oauth2"
 
+	feedentriesv1 "github.com/jdholdren/seymour/apis/feedentries/v1"
 	"github.com/jdholdren/seymour/internal/seymour"
 )
 
@@ -67,7 +68,7 @@ type Server struct {
 	*http.Server
 
 	fetchClient    *http.Client
-	entryRespCache *lru.Cache[string, FeedEntryResp]
+	entryRespCache *lru.Cache[string, feedentriesv1.FeedEntryResp]
 
 	feeds    seymour.FeedService
 	timeline seymour.TimelineService
@@ -92,7 +93,7 @@ func NewServer(
 ) *Server {
 	var (
 		r        = errRouter{Router: mux.NewRouter()}
-		cache, _ = lru.New[string, FeedEntryResp](1024)
+		cache, _ = lru.New[string, feedentriesv1.FeedEntryResp](1024)
 	)
 
 	srvr := Server{

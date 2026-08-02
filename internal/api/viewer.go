@@ -2,18 +2,8 @@ package api
 
 import (
 	"net/http"
-)
 
-type (
-	Viewer struct {
-		Subscriptions map[string]ViewerSubscription `json:"subscriptions"`
-	}
-
-	ViewerSubscription struct {
-		Name        string `json:"name"`
-		FeedID      string `json:"feed_id"`
-		Description string `json:"description"`
-	}
+	viewerv1 "github.com/jdholdren/seymour/apis/viewer/v1"
 )
 
 func (s Server) handleViewer(w http.ResponseWriter, r *http.Request) error {
@@ -34,7 +24,7 @@ func (s Server) handleViewer(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	viewerSubs := make(map[string]ViewerSubscription)
+	viewerSubs := make(map[string]viewerv1.ViewerSubscription)
 	for _, feed := range feeds {
 		var title, desc string
 		if feed.Title != nil {
@@ -44,14 +34,14 @@ func (s Server) handleViewer(w http.ResponseWriter, r *http.Request) error {
 			desc = *feed.Description
 		}
 
-		viewerSubs[feed.ID] = ViewerSubscription{
+		viewerSubs[feed.ID] = viewerv1.ViewerSubscription{
 			Name:        title,
 			FeedID:      feed.ID,
 			Description: desc,
 		}
 	}
 
-	return writeJSON(w, http.StatusOK, Viewer{
+	return writeJSON(w, http.StatusOK, viewerv1.Viewer{
 		Subscriptions: viewerSubs,
 	})
 }
