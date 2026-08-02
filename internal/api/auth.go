@@ -45,8 +45,8 @@ func (s Server) requireAuth(next http.Handler) http.Handler {
 	})
 }
 
-// userIDFromContext returns the user ID that requireAuth attached to the request context.
-func userIDFromContext(ctx context.Context) string {
+// ctxUserID returns the user ID that requireAuth attached to the request context.
+func ctxUserID(ctx context.Context) string {
 	id, _ := ctx.Value(userIDCtxKey).(string)
 	return id
 }

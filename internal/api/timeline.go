@@ -58,7 +58,7 @@ func (s Server) postSusbcriptions(w http.ResponseWriter, r *http.Request) error 
 		userID = mux.Vars(r)["userID"]
 		body   apiv1.PostSubscriptionReq
 	)
-	if userID != userIDFromContext(ctx) {
+	if userID != ctxUserID(ctx) {
 		return seymour.E("forbidden", http.StatusForbidden)
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -95,7 +95,7 @@ func (s Server) getSusbcriptions(w http.ResponseWriter, r *http.Request) error {
 		ctx    = r.Context()
 		userID = mux.Vars(r)["userID"]
 	)
-	if userID != userIDFromContext(ctx) {
+	if userID != ctxUserID(ctx) {
 		return seymour.E("forbidden", http.StatusForbidden)
 	}
 
@@ -150,7 +150,7 @@ func (s Server) deleteSubscription(w http.ResponseWriter, r *http.Request) error
 	if err != nil {
 		return err
 	}
-	if sub.UserID != userIDFromContext(ctx) {
+	if sub.UserID != ctxUserID(ctx) {
 		return seymour.E("forbidden", http.StatusForbidden)
 	}
 
@@ -168,7 +168,7 @@ func (s Server) getTimeline(w http.ResponseWriter, r *http.Request) error {
 		userID = mux.Vars(r)["userID"]
 		feedID = r.URL.Query().Get("feed_id")
 	)
-	if userID != userIDFromContext(ctx) {
+	if userID != ctxUserID(ctx) {
 		return seymour.E("forbidden", http.StatusForbidden)
 	}
 
