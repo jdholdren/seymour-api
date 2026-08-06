@@ -162,25 +162,73 @@ func (s Server) deleteSubscription(w http.ResponseWriter, r *http.Request) error
 	return nil
 }
 
+// validTimelineEntryStatuses are the values getTimeline accepts for its
+// ?status= filter.
+var validTimelineEntryStatuses = map[seymour.TimelineEntryStatus]bool{
+	seymour.TimelineEntryStatusRequiresJudgement: true,
+	seymour.TimelineEntryStatusApproved:          true,
+	seymour.TimelineEntryStatusRejected:          true,
+}
+
+// parseTimelineDateParam parses a "from"/"to" query value, accepting either
+// a full RFC3339 timestamp or a bare date (2006-01-02). A bare date is
+// anchored to the start of the day, or the end of the day if endOfDay is
+// true, so ?to=2026-08-05 includes the entire day.
+func parseTimelineDateParam(value string, endOfDay bool) (*time.Time, error) {
+	if value == "" {
+		return nil, nil
+	}
+
+	if t, err := time.Parse(time.RFC3339, value); err == nil {
+		return &t, nil
+	}
+
+	t, err := time.Parse("2006-01-02", value)
+	if err != nil {
+		return nil, fmt.Errorf("must be RFC3339 or YYYY-MM-DD: %s", value)
+	}
+	if endOfDay {
+		t = t.Add(24*time.Hour - time.Nanosecond)
+	}
+
+	return &t, nil
+}
+
 func (s Server) getTimeline(w http.ResponseWriter, r *http.Request) error {
 	var (
 		ctx    = r.Context()
 		userID = mux.Vars(r)["userID"]
-		feedID = r.URL.Query().Get("feed_id")
+		query  = r.URL.Query()
+		feedID = query.Get("feed_id")
+		status = seymour.TimelineEntryStatus(query.Get("status"))
 	)
 	if userID != ctxUserID(ctx) {
 		return seymour.E("forbidden", http.StatusForbidden)
+	}
+	if status != "" && !validTimelineEntryStatuses[status] {
+		return seymour.E(fmt.Sprintf("invalid status: %s", status), http.StatusBadRequest)
+	}
+
+	fromDate, err := parseTimelineDateParam(query.Get("from"), false)
+	if err != nil {
+		return seymour.E(fmt.Sprintf("invalid from: %s", err), http.StatusBadRequest)
+	}
+	toDate, err := parseTimelineDateParam(query.Get("to"), true)
+	if err != nil {
+		return seymour.E(fmt.Sprintf("invalid to: %s", err), http.StatusBadRequest)
 	}
 
 	// Parse pagination parameters
 	limit, offset := parsePaginationParams(r, 20, 100) // default=20, max=100
 
 	args := seymour.TimelineEntriesArgs{
-		UserID: userID,
-		Status: seymour.TimelineEntryStatusApproved,
-		FeedID: feedID,
-		Limit:  uint64(limit),
-		Offset: uint64(offset),
+		UserID:   userID,
+		Status:   status,
+		FeedID:   feedID,
+		FromDate: fromDate,
+		ToDate:   toDate,
+		Limit:    uint64(limit),
+		Offset:   uint64(offset),
 	}
 
 	// Get count and entries

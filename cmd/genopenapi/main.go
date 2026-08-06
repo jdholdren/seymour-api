@@ -24,6 +24,9 @@ import (
 type (
 	timelineQuery struct {
 		FeedID string `query:"feed_id" description:"Filter the timeline to a single feed."`
+		Status string `query:"status" description:"Filter by entry status (requires_judgement, approved, rejected). Defaults to all statuses."`
+		From   string `query:"from" description:"Only include entries published on or after this date (RFC3339 or YYYY-MM-DD)."`
+		To     string `query:"to" description:"Only include entries published on or before this date (RFC3339 or YYYY-MM-DD)."`
 		Limit  int    `query:"limit" description:"Page size, default 20, max 100."`
 		Offset int    `query:"offset" description:"Pagination offset, default 0."`
 	}
@@ -85,7 +88,7 @@ func main() {
 		},
 		{
 			method: http.MethodGet, path: "/api/timeline", id: "getTimeline", tag: "timeline",
-			summary:   "Get the paginated, curated timeline of approved entries.",
+			summary:   "Get the paginated, curated timeline, optionally filtered by status and publish date.",
 			reqParams: timelineQuery{}, resp: apiv1.TimelineResp{}, status: http.StatusOK,
 		},
 		{

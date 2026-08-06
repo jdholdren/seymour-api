@@ -1,6 +1,9 @@
 package seymour
 
-import "context"
+import (
+	"context"
+	"time"
+)
 
 // TimelineService provides data operations for the curated timeline and
 // the subscriptions that feed it.
@@ -50,6 +53,11 @@ type TimelineEntriesArgs struct {
 	Status TimelineEntryStatus // To optionally filter by status
 	FeedID string              // To optionally filter by feed
 	Limit  uint64              // To optionally limit the number of entries returned
+
+	// To optionally filter by the entry's feed publish date, inclusive on
+	// both ends.
+	FromDate *time.Time
+	ToDate   *time.Time
 
 	// Pagination fields
 	Offset uint64 // Offset for pagination
