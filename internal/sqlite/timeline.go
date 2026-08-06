@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"time"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
@@ -150,24 +151,48 @@ func (r Repo) UpdateTimelineEntry(ctx context.Context, id string, status seymour
 	return nil
 }
 
-func (r Repo) TimelineEntries(ctx context.Context, args seymour.TimelineEntriesArgs) ([]seymour.TimelineEntry, error) {
-	q := sq.Select("id", "user_id", "feed_entry_id", "created_at", "status", "feed_id").From("timeline_entries").OrderBy("created_at DESC")
-	where := sq.Eq{"user_id": args.UserID}
+// timelineEntriesFilters applies the where clauses (and, when a date filter
+// is present, the join needed to reach feed_entries.publish_time) shared by
+// TimelineEntries and CountTimelineEntries.
+func timelineEntriesFilters(q sq.SelectBuilder, args seymour.TimelineEntriesArgs) sq.SelectBuilder {
+	where := sq.Eq{"timeline_entries.user_id": args.UserID}
 	if args.Status != "" {
-		where["status"] = args.Status
+		where["timeline_entries.status"] = args.Status
 	}
+	if args.FeedID != "" {
+		where["timeline_entries.feed_id"] = args.FeedID
+	}
+	q = q.Where(where)
+
+	if args.FromDate != nil || args.ToDate != nil {
+		q = q.Join("feed_entries ON feed_entries.id = timeline_entries.feed_entry_id")
+		if args.FromDate != nil {
+			q = q.Where(sq.GtOrEq{"feed_entries.publish_time": args.FromDate.Format(time.RFC3339)})
+		}
+		if args.ToDate != nil {
+			q = q.Where(sq.LtOrEq{"feed_entries.publish_time": args.ToDate.Format(time.RFC3339)})
+		}
+	}
+
+	return q
+}
+
+func (r Repo) TimelineEntries(ctx context.Context, args seymour.TimelineEntriesArgs) ([]seymour.TimelineEntry, error) {
+	q := sq.Select(
+		"timeline_entries.id",
+		"timeline_entries.user_id",
+		"timeline_entries.feed_entry_id",
+		"timeline_entries.created_at",
+		"timeline_entries.status",
+		"timeline_entries.feed_id",
+	).From("timeline_entries").OrderBy("timeline_entries.created_at DESC")
+	q = timelineEntriesFilters(q, args)
+
 	if args.Limit > 0 {
 		q = q.Limit(args.Limit)
 	}
 	if args.Offset > 0 {
 		q = q.Offset(args.Offset)
-	}
-	if args.FeedID != "" {
-		q = q.Where("feed_id = ?", args.FeedID)
-	}
-
-	if len(where) > 0 {
-		q = q.Where(where)
 	}
 
 	query, queryArgs, err := q.ToSql()
@@ -185,17 +210,7 @@ func (r Repo) TimelineEntries(ctx context.Context, args seymour.TimelineEntriesA
 
 func (r Repo) CountTimelineEntries(ctx context.Context, args seymour.TimelineEntriesArgs) (int, error) {
 	q := sq.Select("COUNT(*)").From("timeline_entries")
-	where := sq.Eq{"user_id": args.UserID}
-	if args.Status != "" {
-		where["status"] = args.Status
-	}
-	if args.FeedID != "" {
-		q = q.Where("feed_id = ?", args.FeedID)
-	}
-
-	if len(where) > 0 {
-		q = q.Where(where)
-	}
+	q = timelineEntriesFilters(q, args)
 
 	query, queryArgs, err := q.ToSql()
 	if err != nil {

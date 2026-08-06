@@ -130,6 +130,30 @@ paths:
         schema:
           description: Filter the timeline to a single feed.
           type: string
+      - description: Filter by entry status (requires_judgement, approved, rejected).
+          Defaults to all statuses.
+        in: query
+        name: status
+        schema:
+          description: Filter by entry status (requires_judgement, approved, rejected).
+            Defaults to all statuses.
+          type: string
+      - description: Only include entries published on or after this date (RFC3339
+          or YYYY-MM-DD).
+        in: query
+        name: from
+        schema:
+          description: Only include entries published on or after this date (RFC3339
+            or YYYY-MM-DD).
+          type: string
+      - description: Only include entries published on or before this date (RFC3339
+          or YYYY-MM-DD).
+        in: query
+        name: to
+        schema:
+          description: Only include entries published on or before this date (RFC3339
+            or YYYY-MM-DD).
+          type: string
       - description: Page size, default 20, max 100.
         in: query
         name: limit
@@ -149,7 +173,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/V1TimelineResp'
           description: OK
-      summary: Get the paginated, curated timeline of approved entries.
+      summary: Get the paginated, curated timeline, optionally filtered by status
+        and publish date.
       tags:
       - timeline
   /api/viewer:

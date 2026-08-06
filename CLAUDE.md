@@ -66,7 +66,7 @@ All routes below except `/api/viewer`, `/api/oauth-login/gh`, `/api/oauth-callba
 - `POST /api/users/{userID}/subscriptions` — Subscribe to feed (triggers CreateFeed workflow). `{userID}` must match the session's user
 - `GET /api/users/{userID}/subscriptions` — List subscriptions for that user. `{userID}` must match the session's user
 - `DELETE /api/subscriptions/{subscriptionID}` — Delete a subscription; ownership is checked by fetching the subscription and comparing its `user_id` to the session
-- `GET /api/users/{userID}/timeline` — Paginated curated timeline for that user (supports `feed_id` filter). `{userID}` must match the session's user
+- `GET /api/users/{userID}/timeline` — Paginated curated timeline for that user (supports `feed_id`, `status` — one of `requires_judgement`/`approved`/`rejected`, defaults to all — and `from`/`to` publish-date filters, RFC3339 or `YYYY-MM-DD`). `{userID}` must match the session's user
 - `GET /api/feed-entries/{feedEntryID}` — Full article content via go-readability; any authenticated user can read any entry (feeds/entries are a shared global cache, not user-owned)
 - `GET /api/oauth-login/gh` — Start GitHub OAuth login; redirects to GitHub. Accepts `?s=<path>` for where to send the browser (on `FRONTEND_URL`) after login succeeds, defaults to `/`
 - `GET /api/oauth-callback/gh` — GitHub OAuth callback; verifies state, ensures the user via `UserService`, sets the `session` cookie, redirects to `FRONTEND_URL` + the requested path
