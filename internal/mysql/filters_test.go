@@ -72,20 +72,3 @@ func TestUserFilters_Empty(t *testing.T) {
 	require.NoError(t, err)
 	assert.Empty(t, filters)
 }
-
-func TestCreateFilter_Webhook(t *testing.T) {
-	repo := testRepo(t)
-	ctx := t.Context()
-
-	id, err := repo.CreateFilter(ctx, "user-1", seymour.WebhookConfig{Host: "example.com"})
-	require.NoError(t, err)
-
-	filters, err := repo.UserFilters(ctx, "user-1")
-	require.NoError(t, err)
-	require.Len(t, filters, 1)
-
-	got, ok := filters[0].(seymour.WebhookConfig)
-	require.True(t, ok)
-	assert.Equal(t, id, got.ID)
-	assert.Equal(t, "example.com", got.Host)
-}

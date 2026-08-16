@@ -86,7 +86,6 @@ type FilterType string
 const (
 	FilterTypeAllowList    FilterType = "allow_list"
 	FilterTypeDisallowList FilterType = "disallow_list"
-	FilterTypeWebhook      FilterType = "webhook" // Not initially supported, but the main, planned feature.
 )
 
 // Filter is implemented by every filter config type, giving a bit of
@@ -114,13 +113,3 @@ type AllowListConfig struct {
 }
 
 func (AllowListConfig) Type() FilterType { return FilterTypeAllowList }
-
-// WebhookConfig calls out to Host to ask whether an entry should be
-// approved. Not yet reachable via the API or applied during judgement.
-type WebhookConfig struct {
-	ID     string // ID of the underlying user_filters row.
-	UserID string // UserID of the underlying user_filters row.
-	Host   string
-}
-
-func (WebhookConfig) Type() FilterType { return FilterTypeWebhook }

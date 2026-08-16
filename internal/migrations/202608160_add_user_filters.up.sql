@@ -19,10 +19,3 @@ CREATE TABLE filter_keywords (
 );
 
 CREATE INDEX idx_filter_keywords_filter_id ON filter_keywords(filter_id);
-
--- Config backing webhook filters. Not yet reachable via the API; the
--- planned feature will add more tables here (e.g. attempt logging).
-CREATE TABLE filter_webhooks (
-	filter_id VARCHAR(191) PRIMARY KEY,
-	host VARCHAR(255) NOT NULL
-);
