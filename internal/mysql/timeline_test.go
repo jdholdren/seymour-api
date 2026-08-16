@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	apiv1 "github.com/jdholdren/seymour/apis/v1"
 	"github.com/jdholdren/seymour/internal/mysql"
 	"github.com/jdholdren/seymour/internal/seymour"
 )
@@ -69,7 +70,7 @@ func seedTimelineEntry(t *testing.T, repo mysql.Repo, userID, guid string, publi
 		Description: "description",
 		GUID:        guid,
 		Link:        "https://example.com/" + guid,
-		PublishTime: seymour.DBTime{Time: publishTime},
+		PublishTime: publishTime,
 	}}
 	require.NoError(t, repo.InsertEntries(ctx, entries))
 
@@ -123,13 +124,13 @@ func TestTimelineEntries_FilterByDateRange(t *testing.T) {
 	seedTimelineEntry(t, repo, "user-1", "in-range-entry", inRange, seymour.TimelineEntryStatusApproved)
 	seedTimelineEntry(t, repo, "user-1", "newer-entry", newer, seymour.TimelineEntryStatusApproved)
 
-	from := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
-	to := time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC)
+	from := apiv1.Date(time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC))
+	to := apiv1.Date(time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC))
 
 	entries, err := repo.TimelineEntries(ctx, seymour.TimelineEntriesArgs{
 		UserID:   "user-1",
-		FromDate: &from,
-		ToDate:   &to,
+		FromDate: from,
+		ToDate:   to,
 	})
 	require.NoError(t, err)
 	require.Len(t, entries, 1)
@@ -141,8 +142,8 @@ func TestTimelineEntries_FilterByDateRange(t *testing.T) {
 
 	count, err := repo.CountTimelineEntries(ctx, seymour.TimelineEntriesArgs{
 		UserID:   "user-1",
-		FromDate: &from,
-		ToDate:   &to,
+		FromDate: from,
+		ToDate:   to,
 	})
 	require.NoError(t, err)
 	assert.Equal(t, 1, count)

@@ -28,7 +28,7 @@ Two binaries, both in `cmd/`:
 
 ### Core packages
 
-- **`internal/seymour`** — Domain models and the `Service` interfaces. DB types are defined and reused here across the app. `DBTime` is a custom type for MySQL datetime marshaling using RFC3339 (requires the driver DSN option `parseTime=true`). Errors returned from any `Service` implementation should be a `*seymour.Error` (built via `seymour.E(...)`, or one of the sentinels like `seymour.ErrNotFound`/`seymour.ErrConflict`) whenever possible, rather than a plain `error`, so callers (`internal/api`, `internal/worker`) can rely on `errors.As` to recover the right HTTP status instead of falling back to a generic 500.
+- **`internal/seymour`** — Domain models and the `Service` interfaces. DB types are defined and reused here across the app; timestamps are plain `time.Time` fields (the MySQL driver handles `DATETIME`/`TIMESTAMP` marshaling natively given the DSN option `parseTime=true`). Errors returned from any `Service` implementation should be a `*seymour.Error` (built via `seymour.E(...)`, or one of the sentinels like `seymour.ErrNotFound`/`seymour.ErrConflict`) whenever possible, rather than a plain `error`, so callers (`internal/api`, `internal/worker`) can rely on `errors.As` to recover the right HTTP status instead of falling back to a generic 500.
 - **`internal/mysql`** — MySQL implementation of `Service`'s. Uses `sqlx` + `squirrel` query builder. Pure-Go MySQL driver (no CGO): `github.com/go-sql-driver/mysql`.
 - **`internal/sync`** — RSS feed parsing and sync logic. Parses XML, sanitizes HTML, extracts feed metadata.
 - **`internal/worker`** — Temporal workflows and activities:
@@ -37,6 +37,7 @@ Two binaries, both in `cmd/`:
   - `RefreshTimeline` — Inserts missing timeline entries, triggers judging
   - `JudgeTimeline` — Approves/rejects entries via `JudgeEntries` (batches of `judgeBatchSize`, max 3 loops)
 - **`internal/migrations`** — Embedded SQL migration files, run via `golang-migrate`
+- **`apis/v1/date.go`** — `Date` represents a calendar day (no time-of-day), for API fields/params that are date blocks rather than instants (e.g. the timeline's `from`/`to` filters). Its zero value means "unset" (`IsZero()`), so prefer a plain `Date` over `*Date` in structs — don't reach for a pointer just to express absence.
 
 ### Temporal patterns
 
@@ -66,7 +67,7 @@ All routes below except `/api/viewer`, `/api/oauth-login/gh`, `/api/oauth-callba
 - `POST /api/users/{userID}/subscriptions` — Subscribe to feed (triggers CreateFeed workflow). `{userID}` must match the session's user
 - `GET /api/users/{userID}/subscriptions` — List subscriptions for that user. `{userID}` must match the session's user
 - `DELETE /api/subscriptions/{subscriptionID}` — Delete a subscription; ownership is checked by fetching the subscription and comparing its `user_id` to the session
-- `GET /api/users/{userID}/timeline` — Paginated curated timeline for that user (supports `feed_id`, `status` — one of `requires_judgement`/`approved`/`rejected`, defaults to all — and `from`/`to` publish-date filters, RFC3339 or `YYYY-MM-DD`). `{userID}` must match the session's user
+- `GET /api/users/{userID}/timeline` — Paginated curated timeline for that user (supports `feed_id`, `status` — one of `requires_judgement`/`approved`/`rejected`, defaults to all — and `from`/`to` publish-date filters as `YYYY-MM-DD`, parsed via `apiv1.ParseDate`). `{userID}` must match the session's user
 - `GET /api/feed-entries/{feedEntryID}` — Full article content via go-readability; any authenticated user can read any entry (feeds/entries are a shared global cache, not user-owned)
 - `GET /api/oauth-login/gh` — Start GitHub OAuth login; redirects to GitHub. Accepts `?s=<path>` for where to send the browser (on `FRONTEND_URL`) after login succeeds, defaults to `/`
 - `GET /api/oauth-callback/gh` — GitHub OAuth callback; verifies state, ensures the user via `UserService`, sets the `session` cookie, redirects to `FRONTEND_URL` + the requested path
@@ -74,7 +75,8 @@ All routes below except `/api/viewer`, `/api/oauth-login/gh`, `/api/oauth-callba
 
 ## Core Dev Loop
 
-The dev loop consists of two main loops, one for making quick edits and changes, the other for testing changes end-to-end:
+The dev loop consists of two main loops, one for making quick edits and changes, the other for testing changes end-to-end.
+You should follow these loops during normal iteration of making a change, unless specified by the user to be more iterative:
 1. Building Loop
 2. After-Building Loop
 

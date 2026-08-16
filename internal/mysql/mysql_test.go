@@ -50,9 +50,9 @@ func runTests(m *testing.M) (int, error) {
 		}
 	}()
 
-	// parseTime=true is required: seymour.DBTime.Scan expects either a
-	// time.Time or an RFC3339 string, and without parseTime=true the MySQL
-	// driver hands back a []byte, which Scan doesn't handle.
+	// parseTime=true is required so the MySQL driver scans DATETIME/TIMESTAMP
+	// columns directly into time.Time; without it the driver hands back a
+	// []byte instead.
 	connStr, err := container.ConnectionString(ctx, "parseTime=true", "multiStatements=true")
 	if err != nil {
 		return 0, fmt.Errorf("error building mysql connection string: %w", err)

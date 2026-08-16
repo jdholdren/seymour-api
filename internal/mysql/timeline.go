@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"time"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
@@ -166,13 +165,13 @@ func timelineEntriesFilters(q sq.SelectBuilder, args seymour.TimelineEntriesArgs
 	}
 	q = q.Where(where)
 
-	if args.FromDate != nil || args.ToDate != nil {
+	if !args.FromDate.IsZero() || !args.ToDate.IsZero() {
 		q = q.Join("feed_entries ON feed_entries.id = timeline_entries.feed_entry_id")
-		if args.FromDate != nil {
-			q = q.Where(sq.GtOrEq{"feed_entries.publish_time": args.FromDate.Format(time.RFC3339)})
+		if !args.FromDate.IsZero() {
+			q = q.Where(sq.GtOrEq{"feed_entries.publish_time": args.FromDate.Beginning()})
 		}
-		if args.ToDate != nil {
-			q = q.Where(sq.LtOrEq{"feed_entries.publish_time": args.ToDate.Format(time.RFC3339)})
+		if !args.ToDate.IsZero() {
+			q = q.Where(sq.LtOrEq{"feed_entries.publish_time": args.ToDate.End()})
 		}
 	}
 

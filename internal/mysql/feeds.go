@@ -191,7 +191,7 @@ func (r Repo) UpdateFeed(ctx context.Context, id string, args seymour.UpdateFeed
 	if args.Description != "" {
 		q = q.Set("description", args.Description)
 	}
-	if !args.LastSynced.Time.IsZero() {
+	if !args.LastSynced.IsZero() {
 		q = q.Set("last_synced_at", args.LastSynced)
 	}
 	q = q.Where(sq.Eq{"id": id})

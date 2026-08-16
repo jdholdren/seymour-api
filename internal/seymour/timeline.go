@@ -3,6 +3,8 @@ package seymour
 import (
 	"context"
 	"time"
+
+	apiv1 "github.com/jdholdren/seymour/apis/v1"
 )
 
 // TimelineService provides data operations for the curated timeline and
@@ -22,19 +24,19 @@ type TimelineService interface {
 
 // Subscription represents a subscription to a feed.
 type Subscription struct {
-	ID        string `db:"id"`
-	UserID    string `db:"user_id"`
-	FeedID    string `db:"feed_id"`
-	CreatedAt DBTime `db:"created_at"`
+	ID        string    `db:"id"`
+	UserID    string    `db:"user_id"`
+	FeedID    string    `db:"feed_id"`
+	CreatedAt time.Time `db:"created_at"`
 }
 
 // TimelineEntry represents an entry in the timeline.
 type TimelineEntry struct {
-	ID          string `db:"id"`
-	UserID      string `db:"user_id"`
-	FeedEntryID string `db:"feed_entry_id"`
-	CreatedAt   DBTime `db:"created_at"`
-	FeedID      string `db:"feed_id"`
+	ID          string    `db:"id"`
+	UserID      string    `db:"user_id"`
+	FeedEntryID string    `db:"feed_entry_id"`
+	CreatedAt   time.Time `db:"created_at"`
+	FeedID      string    `db:"feed_id"`
 
 	// For curation: whether the entry has been approved by the judge
 	Status TimelineEntryStatus `db:"status"`
@@ -55,9 +57,9 @@ type TimelineEntriesArgs struct {
 	Limit  uint64              // To optionally limit the number of entries returned
 
 	// To optionally filter by the entry's feed publish date, inclusive on
-	// both ends.
-	FromDate *time.Time
-	ToDate   *time.Time
+	// both ends. The zero value means unset.
+	FromDate apiv1.Date
+	ToDate   apiv1.Date
 
 	// Pagination fields
 	Offset uint64 // Offset for pagination

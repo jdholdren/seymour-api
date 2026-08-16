@@ -74,7 +74,7 @@ func TestFeed_RSS(t *testing.T) {
 	assert.Equal(t, "https://example.com/post-1", entries[0].Link)
 	assert.Equal(t, "First RSS post description", entries[0].Description)
 	assert.Equal(t, "feed-123", entries[0].FeedID)
-	assert.False(t, entries[0].PublishTime.Time.IsZero())
+	assert.False(t, entries[0].PublishTime.IsZero())
 
 	assert.Equal(t, "RSS Post Two", entries[1].Title)
 	assert.Equal(t, "rss-guid-2", entries[1].GUID)
@@ -102,7 +102,7 @@ func TestFeed_Atom(t *testing.T) {
 	assert.Equal(t, "https://example.com/atom-1", entries[0].Link)
 	assert.Equal(t, "First Atom post summary", entries[0].Description)
 	assert.Equal(t, "feed-456", entries[0].FeedID)
-	assert.False(t, entries[0].PublishTime.Time.IsZero())
+	assert.False(t, entries[0].PublishTime.IsZero())
 
 	// Second entry has content instead of summary
 	assert.Equal(t, "Atom Post Two", entries[1].Title)
