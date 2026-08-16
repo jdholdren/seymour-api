@@ -177,49 +177,6 @@ paths:
         and publish date.
       tags:
       - timeline
-  /api/users/{userID}/filters:
-    get:
-      operationId: listFilters
-      parameters:
-      - in: path
-        name: userID
-        required: true
-        schema:
-          type: string
-      responses:
-        "200":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/V1FilterListResp'
-          description: OK
-      summary: List a user's filters.
-      tags:
-      - filters
-    post:
-      operationId: createFilter
-      parameters:
-      - in: path
-        name: userID
-        required: true
-        schema:
-          type: string
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/V1PostFilterReq'
-      responses:
-        "201":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/V1FilterResp'
-          description: Created
-      summary: Create a filter (allow_list or disallow_list) used to curate the user's
-        timeline during judgement.
-      tags:
-      - filters
   /api/viewer:
     get:
       operationId: getViewer
@@ -274,25 +231,6 @@ components:
         url:
           type: string
       type: object
-    V1FilterListResp:
-      properties:
-        filters:
-          items:
-            $ref: '#/components/schemas/V1FilterResp'
-          nullable: true
-          type: array
-      type: object
-    V1FilterResp:
-      properties:
-        id:
-          type: string
-        keywords:
-          items:
-            type: string
-          type: array
-        type:
-          type: string
-      type: object
     V1PaginationMeta:
       properties:
         limit:
@@ -301,15 +239,6 @@ components:
           type: integer
         total:
           type: integer
-      type: object
-    V1PostFilterReq:
-      properties:
-        keywords:
-          items:
-            type: string
-          type: array
-        type:
-          type: string
       type: object
     V1PostSubscriptionReq:
       properties:
