@@ -1,7 +1,6 @@
 package mysql_test
 
 import (
-	"context"
 	"net/http"
 	"testing"
 
@@ -13,7 +12,7 @@ import (
 
 func TestInsertFeed_CreatesFeed(t *testing.T) {
 	repo := testRepo(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	feed, err := repo.InsertFeed(ctx, "https://example.com/feed.xml")
 	require.NoError(t, err)
@@ -24,7 +23,7 @@ func TestInsertFeed_CreatesFeed(t *testing.T) {
 
 func TestInsertFeed_ConflictOnDuplicateURL(t *testing.T) {
 	repo := testRepo(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	_, err := repo.InsertFeed(ctx, "https://example.com/feed.xml")
 	require.NoError(t, err)
@@ -39,7 +38,7 @@ func TestInsertFeed_ConflictOnDuplicateURL(t *testing.T) {
 
 func TestFeed_NotFound(t *testing.T) {
 	repo := testRepo(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	_, err := repo.Feed(ctx, "does-not-exist")
 	require.Error(t, err)
@@ -51,7 +50,7 @@ func TestFeed_NotFound(t *testing.T) {
 
 func TestFeed_Found(t *testing.T) {
 	repo := testRepo(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	created, err := repo.InsertFeed(ctx, "https://example.com/feed.xml")
 	require.NoError(t, err)
@@ -64,7 +63,7 @@ func TestFeed_Found(t *testing.T) {
 
 func TestFeedByURL_NotFound(t *testing.T) {
 	repo := testRepo(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	_, err := repo.FeedByURL(ctx, "https://example.com/does-not-exist.xml")
 	require.Error(t, err)
@@ -76,7 +75,7 @@ func TestFeedByURL_NotFound(t *testing.T) {
 
 func TestFeedByURL_Found(t *testing.T) {
 	repo := testRepo(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	created, err := repo.InsertFeed(ctx, "https://example.com/feed.xml")
 	require.NoError(t, err)
@@ -88,7 +87,7 @@ func TestFeedByURL_Found(t *testing.T) {
 
 func TestFeeds_MultipleIDs(t *testing.T) {
 	repo := testRepo(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	feed1, err := repo.InsertFeed(ctx, "https://example.com/feed-1.xml")
 	require.NoError(t, err)
@@ -108,7 +107,7 @@ func TestFeeds_MultipleIDs(t *testing.T) {
 
 func TestDeleteFeed(t *testing.T) {
 	repo := testRepo(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	feed, err := repo.InsertFeed(ctx, "https://example.com/feed.xml")
 	require.NoError(t, err)
@@ -125,7 +124,7 @@ func TestDeleteFeed(t *testing.T) {
 
 func TestCountAllFeeds(t *testing.T) {
 	repo := testRepo(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	count, err := repo.CountAllFeeds(ctx)
 	require.NoError(t, err)
@@ -143,7 +142,7 @@ func TestCountAllFeeds(t *testing.T) {
 
 func TestFeedIDs_Pagination(t *testing.T) {
 	repo := testRepo(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	for i := range 5 {
 		_, err := repo.InsertFeed(ctx, "https://example.com/feed-"+string(rune('a'+i))+".xml")
@@ -165,7 +164,7 @@ func TestFeedIDs_Pagination(t *testing.T) {
 
 func TestInsertEntries_DedupesByGUID(t *testing.T) {
 	repo := testRepo(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	feed, err := repo.InsertFeed(ctx, "https://example.com/feed.xml")
 	require.NoError(t, err)
@@ -198,7 +197,7 @@ func TestInsertEntries_DedupesByGUID(t *testing.T) {
 
 func TestEntry_NotFound(t *testing.T) {
 	repo := testRepo(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	_, err := repo.Entry(ctx, "does-not-exist")
 	require.Error(t, err)
@@ -210,7 +209,7 @@ func TestEntry_NotFound(t *testing.T) {
 
 func TestEntry_Found(t *testing.T) {
 	repo := testRepo(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	feed, err := repo.InsertFeed(ctx, "https://example.com/feed.xml")
 	require.NoError(t, err)
@@ -231,7 +230,7 @@ func TestEntry_Found(t *testing.T) {
 
 func TestEntries_MultipleIDs(t *testing.T) {
 	repo := testRepo(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	feed, err := repo.InsertFeed(ctx, "https://example.com/feed.xml")
 	require.NoError(t, err)
@@ -249,7 +248,7 @@ func TestEntries_MultipleIDs(t *testing.T) {
 
 func TestUpdateFeed_PartialFields(t *testing.T) {
 	repo := testRepo(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	feed, err := repo.InsertFeed(ctx, "https://example.com/feed.xml")
 	require.NoError(t, err)

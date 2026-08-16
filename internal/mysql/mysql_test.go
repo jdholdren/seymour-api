@@ -3,6 +3,8 @@ package mysql_test
 import (
 	"context"
 	"fmt"
+	"log"
+	"os"
 	"testing"
 
 	"github.com/jmoiron/sqlx"
@@ -13,15 +15,25 @@ import (
 	"github.com/jdholdren/seymour/internal/mysql"
 )
 
-// testRepo spins up an ephemeral MySQL container via testcontainers-go,
-// applies the mysql migration set, and returns a Repo wired to it.
-//
-// parseTime=true is required on the DSN: seymour.DBTime.Scan expects either
-// a time.Time or an RFC3339 string, and without parseTime=true the MySQL
-// driver hands back a []byte, which Scan doesn't currently handle. Flagging
-// this now as a known follow-up for the real repo implementation phase.
-func testRepo(t *testing.T) mysql.Repo {
-	t.Helper()
+// testDB is shared across every test in this package: TestMain starts one
+// MySQL container and applies migrations once, rather than paying for a
+// fresh container per test.
+var testDB *sqlx.DB
+
+func TestMain(m *testing.M) {
+	// os.Exit below skips deferred calls, so cleanup is run explicitly
+	// rather than via defer.
+	code, err := runTests(m)
+	if err != nil {
+		log.Fatal(err)
+	}
+	os.Exit(code)
+}
+
+// runTests starts the shared MySQL container, runs the suite, and tears the
+// container down before returning — kept separate from TestMain so cleanup
+// always runs, since TestMain's os.Exit would otherwise skip any defers.
+func runTests(m *testing.M) (code int, err error) {
 	ctx := context.Background()
 
 	container, err := tcmysql.Run(ctx, "mysql:8.4",
@@ -29,18 +41,66 @@ func testRepo(t *testing.T) mysql.Repo {
 		tcmysql.WithUsername("seymour"),
 		tcmysql.WithPassword("seymour"),
 	)
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = container.Terminate(context.Background()) })
+	if err != nil {
+		return 0, fmt.Errorf("error starting mysql container: %w", err)
+	}
+	defer func() {
+		if tErr := container.Terminate(context.Background()); tErr != nil {
+			log.Printf("error terminating mysql container: %s", tErr)
+		}
+	}()
 
+	// parseTime=true is required: seymour.DBTime.Scan expects either a
+	// time.Time or an RFC3339 string, and without parseTime=true the MySQL
+	// driver hands back a []byte, which Scan doesn't handle.
 	connStr, err := container.ConnectionString(ctx, "parseTime=true", "multiStatements=true")
-	require.NoError(t, err)
+	if err != nil {
+		return 0, fmt.Errorf("error building mysql connection string: %w", err)
+	}
 
 	db, err := sqlx.Open("mysql", connStr)
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = db.Close() })
+	if err != nil {
+		return 0, fmt.Errorf("error opening mysql connection: %w", err)
+	}
+	defer func() { _ = db.Close() }()
 
-	require.NoError(t, db.PingContext(ctx), fmt.Sprintf("failed to ping mysql at %s", connStr))
-	require.NoError(t, migrationsmysql.Run(db))
+	if err := db.PingContext(ctx); err != nil {
+		return 0, fmt.Errorf("failed to ping mysql at %s: %w", connStr, err)
+	}
+	if err := migrationsmysql.Run(db); err != nil {
+		return 0, fmt.Errorf("error running mysql migrations: %w", err)
+	}
 
-	return mysql.New(db)
+	testDB = db
+
+	return m.Run(), nil
+}
+
+// tables lists every table truncated between tests, in an order that would
+// satisfy FK dependency order if the schema ever gains declared foreign keys
+// (it doesn't today; ordering here is just future-proofing).
+var tables = []string{
+	"timeline_entries",
+	"subscriptions",
+	"feed_entries",
+	"feeds",
+	"user_logins",
+	"users",
+}
+
+// testRepo returns a Repo wired to the shared testDB, registering a Cleanup
+// that truncates every table so each test starts from an empty schema
+// without spinning up its own container.
+func testRepo(t *testing.T) mysql.Repo {
+	t.Helper()
+
+	t.Cleanup(func() {
+		ctx := context.Background()
+		for _, table := range tables {
+			_, err := testDB.ExecContext(ctx, fmt.Sprintf("TRUNCATE TABLE %s;", table))
+			require.NoError(t, err)
+		}
+	})
+
+	return mysql.New(testDB)
 }

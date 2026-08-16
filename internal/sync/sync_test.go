@@ -1,7 +1,6 @@
 package sync
 
 import (
-	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -61,7 +60,7 @@ func TestFeed_RSS(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	feed, entries, err := Feed(context.Background(), "feed-123", srv.URL)
+	feed, entries, err := Feed(t.Context(), "feed-123", srv.URL)
 	require.NoError(t, err)
 
 	assert.Equal(t, "feed-123", feed.ID)
@@ -88,7 +87,7 @@ func TestFeed_Atom(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	feed, entries, err := Feed(context.Background(), "feed-456", srv.URL)
+	feed, entries, err := Feed(t.Context(), "feed-456", srv.URL)
 	require.NoError(t, err)
 
 	assert.Equal(t, "feed-456", feed.ID)

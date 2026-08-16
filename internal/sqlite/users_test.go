@@ -1,7 +1,6 @@
 package sqlite_test
 
 import (
-	"context"
 	"net/http"
 	"testing"
 
@@ -29,7 +28,7 @@ func testRepo(t *testing.T) sqlite.Repo {
 
 func TestEnsureUser_CreatesNewUser(t *testing.T) {
 	repo := testRepo(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	user, login, err := repo.EnsureUser(ctx, seymour.Idp("github"), "1234")
 	require.NoError(t, err)
@@ -42,7 +41,7 @@ func TestEnsureUser_CreatesNewUser(t *testing.T) {
 
 func TestEnsureUser_ReturnsExistingUser(t *testing.T) {
 	repo := testRepo(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	user1, login1, err := repo.EnsureUser(ctx, seymour.Idp("github"), "1234")
 	require.NoError(t, err)
@@ -57,7 +56,7 @@ func TestEnsureUser_ReturnsExistingUser(t *testing.T) {
 
 func TestUser_NotFound(t *testing.T) {
 	repo := testRepo(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	_, err := repo.User(ctx, "does-not-exist")
 	require.Error(t, err)
@@ -69,7 +68,7 @@ func TestUser_NotFound(t *testing.T) {
 
 func TestUser_Found(t *testing.T) {
 	repo := testRepo(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	created, _, err := repo.EnsureUser(ctx, seymour.Idp("github"), "5678")
 	require.NoError(t, err)

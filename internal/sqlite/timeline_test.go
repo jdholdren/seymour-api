@@ -1,7 +1,6 @@
 package sqlite_test
 
 import (
-	"context"
 	"net/http"
 	"testing"
 	"time"
@@ -15,7 +14,7 @@ import (
 
 func TestDeleteSubscription(t *testing.T) {
 	repo := testRepo(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	require.NoError(t, repo.CreateSubscription(ctx, "user-1", "feed-1"))
 
@@ -32,7 +31,7 @@ func TestDeleteSubscription(t *testing.T) {
 
 func TestAllSubscriptions_ScopedByUser(t *testing.T) {
 	repo := testRepo(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	require.NoError(t, repo.CreateSubscription(ctx, "user-1", "feed-1"))
 	require.NoError(t, repo.CreateSubscription(ctx, "user-2", "feed-1"))
@@ -45,7 +44,7 @@ func TestAllSubscriptions_ScopedByUser(t *testing.T) {
 
 func TestDeleteSubscription_NotFound(t *testing.T) {
 	repo := testRepo(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	err := repo.DeleteSubscription(ctx, "does-not-exist")
 	require.Error(t, err)
@@ -59,7 +58,7 @@ func TestDeleteSubscription_NotFound(t *testing.T) {
 // and a timeline entry pointing to it, returning the timeline entry's ID.
 func seedTimelineEntry(t *testing.T, repo sqlite.Repo, userID, guid string, publishTime time.Time, status seymour.TimelineEntryStatus) string {
 	t.Helper()
-	ctx := context.Background()
+	ctx := t.Context()
 
 	feed, err := repo.InsertFeed(ctx, "https://example.com/"+guid)
 	require.NoError(t, err)
@@ -90,7 +89,7 @@ func seedTimelineEntry(t *testing.T, repo sqlite.Repo, userID, guid string, publ
 
 func TestTimelineEntries_FilterByStatus(t *testing.T) {
 	repo := testRepo(t)
-	ctx := context.Background()
+	ctx := t.Context()
 	now := time.Now().UTC().Truncate(time.Second)
 
 	seedTimelineEntry(t, repo, "user-1", "approved-entry", now, seymour.TimelineEntryStatusApproved)
@@ -114,7 +113,7 @@ func TestTimelineEntries_FilterByStatus(t *testing.T) {
 
 func TestTimelineEntries_FilterByDateRange(t *testing.T) {
 	repo := testRepo(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	older := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	inRange := time.Date(2026, 6, 15, 0, 0, 0, 0, time.UTC)
