@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Seymour is an RSS feed aggregator with a curated timeline, moving from single-tenant to multi-tenant. Users subscribe to RSS feeds, and a Temporal worker syncs feeds, builds a timeline, then judges entries to decide what gets surfaced. The frontend is a separate project (expected at localhost:3000).
 
-A `UserService` (`internal/seymour/user.go`, implemented in `internal/sqlite/users.go`) and GitHub OAuth login (`internal/api/oauth.go`) exist. `internal/api/auth.go`'s `requireAuth` middleware enforces the session cookie on every route except `/api/viewer` (which doubles as the "who am I" check), `/api/oauth-login/gh`, `/api/oauth-callback/gh`, and `/api/logout`. `subscriptions`/`timeline_entries` carry a `user_id`; `feeds`/`feed_entries` stay a shared global cache (deduped by URL) with no owner.
+A `UserService` (`internal/seymour/user.go`, implemented in `internal/mysql/users.go`) and GitHub OAuth login (`internal/api/oauth.go`) exist. `internal/api/auth.go`'s `requireAuth` middleware enforces the session cookie on every route except `/api/viewer` (which doubles as the "who am I" check), `/api/oauth-login/gh`, `/api/oauth-callback/gh`, and `/api/logout`. `subscriptions`/`timeline_entries` carry a `user_id`; `feeds`/`feed_entries` stay a shared global cache (deduped by URL) with no owner.
 
 The judging step is a seam: `activities.JudgeEntries` in `internal/worker/judge.go` currently approves every entry. Replace its body to introduce a real curation strategy — the surrounding workflow, batching, and persistence already exist.
 
@@ -28,8 +28,8 @@ Two binaries, both in `cmd/`:
 
 ### Core packages
 
-- **`internal/seymour`** — Domain models and the `Service` interfaces. DB types are defined and reused here across the app. `DBTime` is a custom type for SQLite datetime marshaling using RFC3339. Errors returned from any `Service` implementation should be a `*seymour.Error` (built via `seymour.E(...)`, or one of the sentinels like `seymour.ErrNotFound`/`seymour.ErrConflict`) whenever possible, rather than a plain `error`, so callers (`internal/api`, `internal/worker`) can rely on `errors.As` to recover the right HTTP status instead of falling back to a generic 500.
-- **`internal/sqlite`** — SQLite implementation of `Service`'s. Uses `sqlx` + `squirrel` query builder. Pure-Go SQLite driver (no CGO): `modernc.org/sqlite`.
+- **`internal/seymour`** — Domain models and the `Service` interfaces. DB types are defined and reused here across the app. `DBTime` is a custom type for MySQL datetime marshaling using RFC3339 (requires the driver DSN option `parseTime=true`). Errors returned from any `Service` implementation should be a `*seymour.Error` (built via `seymour.E(...)`, or one of the sentinels like `seymour.ErrNotFound`/`seymour.ErrConflict`) whenever possible, rather than a plain `error`, so callers (`internal/api`, `internal/worker`) can rely on `errors.As` to recover the right HTTP status instead of falling back to a generic 500.
+- **`internal/mysql`** — MySQL implementation of `Service`'s. Uses `sqlx` + `squirrel` query builder. Pure-Go MySQL driver (no CGO): `github.com/go-sql-driver/mysql`.
 - **`internal/sync`** — RSS feed parsing and sync logic. Parses XML, sanitizes HTML, extracts feed metadata.
 - **`internal/worker`** — Temporal workflows and activities:
   - `SyncAllFeeds` — Scheduled every 15 min, batches feeds in groups of 50
@@ -47,15 +47,15 @@ Two binaries, both in `cmd/`:
 
 ### ID generation
 
-UUIDs with namespace suffixes: e.g. `{uuid}-fd` for feeds. See the `internal/sqlite` package.
+UUIDs with namespace suffixes: e.g. `{uuid}-fd` for feeds. See the `internal/mysql` package.
 
 ### Database
 
-SQLite with connection flags `-txlock=immediate -busy_timeout=5000`. Migrations are embedded Go files. Timeline entry statuses: `requires_judgement`, `approved`, `rejected`.
+MySQL, connected via a DSN in the `DATABASE` env var (must include `parseTime=true`; e.g. `user:pass@tcp(mysql:3306)/seymour?parseTime=true&multiStatements=true`). Migrations are embedded Go files. Timeline entry statuses: `requires_judgement`, `approved`, `rejected`.
 
 ## Environment Variables
 
-**API:** `DATABASE` (SQLite path), `TEMPORAL_HOST_PORT`, `PORT` (default 4444), `CORS`, `FRONTEND_URL` (browser is redirected here after GitHub OAuth completes), `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `GITHUB_REDIRECT_URL` (must match the GitHub OAuth app's configured callback URL), `SESSION_HASH_KEY`/`SESSION_BLOCK_KEY` (hex-encoded securecookie signing/encryption keys)
+**API:** `DATABASE` (MySQL DSN), `TEMPORAL_HOST_PORT`, `PORT` (default 4444), `CORS`, `FRONTEND_URL` (browser is redirected here after GitHub OAuth completes), `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `GITHUB_REDIRECT_URL` (must match the GitHub OAuth app's configured callback URL), `SESSION_HASH_KEY`/`SESSION_BLOCK_KEY` (hex-encoded securecookie signing/encryption keys)
 **Worker:** `DATABASE`, `TEMPORAL_HOST_PORT`
 
 ## API Endpoints

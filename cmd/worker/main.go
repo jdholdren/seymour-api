@@ -14,10 +14,11 @@ import (
 	"github.com/sethvargo/go-retry"
 	"go.temporal.io/sdk/client"
 	_ "golang.org/x/crypto/x509roots/fallback"
-	_ "modernc.org/sqlite"
+
+	_ "github.com/go-sql-driver/mysql"
 
 	"github.com/jdholdren/seymour/internal/logger"
-	seyqlite "github.com/jdholdren/seymour/internal/sqlite"
+	seymysql "github.com/jdholdren/seymour/internal/mysql"
 	seyworker "github.com/jdholdren/seymour/internal/worker"
 )
 
@@ -39,14 +40,14 @@ func main() {
 	l := slog.New(logger.NewContextHandler(slog.NewTextHandler(os.Stdout, nil)))
 	slog.SetDefault(l)
 
-	// Connect to the sqlite db
-	dbx, err := sqlx.Open("sqlite", cfg.Database)
+	// Connect to the mysql db
+	dbx, err := sqlx.Open("mysql", cfg.Database)
 	if err != nil {
 		log.Fatalf("error opening database: %s", err)
 	}
 	defer func() { _ = dbx.Close() }()
 
-	repo := seyqlite.New(dbx)
+	repo := seymysql.New(dbx)
 
 	// Retry until temporal is ready
 	var temporalCli client.Client

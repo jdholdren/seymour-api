@@ -6,8 +6,8 @@ import (
 	"time"
 )
 
-// DBTime is a sqlite-acceptable implementation of a time that can be marshaled in and out of
-// a sqlite db.
+// DBTime is a MySQL-acceptable implementation of a time that can be marshaled in and out of
+// a MySQL db (requires the driver DSN option parseTime=true).
 type DBTime struct {
 	Time time.Time
 }

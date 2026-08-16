@@ -7,12 +7,14 @@ services:
         MAIN_PATH: ./cmd/worker
     env_file: .env
     environment:
-      - DATABASE=/data/citadel/citadel.sqlite
+      - DATABASE=seymour:seymour@tcp(mysql:3306)/seymour?parseTime=true&multiStatements=true
       - TEMPORAL_HOST_PORT=temporal-server:7233
-    volumes:
-      - ./data/citadel:/data/citadel
     depends_on:
-      - temporal-server
+      temporal-server:
+        condition: service_started
+      mysql:
+        condition: service_healthy
+    restart: unless-stopped
   api:
     build:
       context: .
@@ -23,16 +25,33 @@ services:
       - "4444:4444"
     env_file: .env
     environment:
-      - DATABASE=/data/citadel/citadel.sqlite
+      - DATABASE=seymour:seymour@tcp(mysql:3306)/seymour?parseTime=true&multiStatements=true
       - TEMPORAL_HOST_PORT=temporal-server:7233
       - PORT=4444
       - CORS=http://localhost:3000
       - FRONTEND_URL=http://localhost:3000
       - GITHUB_REDIRECT_URL=http://localhost:4444/api/oauth-callback/gh
-    volumes:
-      - ./data/citadel:/data/citadel
     depends_on:
-      - temporal-server
+      temporal-server:
+        condition: service_started
+      mysql:
+        condition: service_healthy
+    restart: unless-stopped
+  mysql:
+    image: mysql:8.4
+    environment:
+      - MYSQL_DATABASE=seymour
+      - MYSQL_USER=seymour
+      - MYSQL_PASSWORD=seymour
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-seymour}
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-seymour}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
   temporal-server:
     image: temporalio/temporal:latest
     ports:
@@ -41,3 +60,6 @@ services:
       - ./data/temporal:/home/temporal
     command: server start-dev --ip 0.0.0.0 --db-filename /home/temporal/temporal.db
     restart: unless-stopped
+
+volumes:
+  mysql-data:
