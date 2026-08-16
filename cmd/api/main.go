@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/hex"
-	"fmt"
 	"log"
 	"log/slog"
 	"net/url"
@@ -21,12 +20,12 @@ import (
 
 	"net/http"
 
-	_ "modernc.org/sqlite"
+	_ "github.com/go-sql-driver/mysql"
 
 	"github.com/jdholdren/seymour/internal/api"
 	"github.com/jdholdren/seymour/internal/logger"
 	"github.com/jdholdren/seymour/internal/migrations"
-	seyqlite "github.com/jdholdren/seymour/internal/sqlite"
+	seymysql "github.com/jdholdren/seymour/internal/mysql"
 	"github.com/jdholdren/seymour/internal/worker"
 )
 
@@ -60,8 +59,8 @@ func main() {
 	l := slog.New(logger.NewContextHandler(slog.NewTextHandler(os.Stdout, nil)))
 	slog.SetDefault(l)
 
-	// Connect to the sqlite db
-	dbx, err := sqlx.Open("sqlite", fmt.Sprintf("%s?_txlock=immediate&_busy_timeout=5000", cfg.Database))
+	// Connect to the mysql db
+	dbx, err := sqlx.Open("mysql", cfg.Database)
 	if err != nil {
 		log.Fatalf("error opening database: %s", err)
 	}
@@ -72,7 +71,7 @@ func main() {
 		log.Fatalf("error running migrations: %s", err)
 	}
 
-	repo := seyqlite.New(dbx)
+	repo := seymysql.New(dbx)
 
 	// Retry until temporal is ready
 	var temporalCli client.Client

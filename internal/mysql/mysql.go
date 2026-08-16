@@ -1,5 +1,5 @@
 // Package mysql is the MySQL implementation of the seymour service
-// interfaces, replacing internal/sqlite.
+// interfaces.
 package mysql
 
 import (

@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 	tcmysql "github.com/testcontainers/testcontainers-go/modules/mysql"
 
-	migrationsmysql "github.com/jdholdren/seymour/internal/migrations-mysql"
+	"github.com/jdholdren/seymour/internal/migrations"
 	"github.com/jdholdren/seymour/internal/mysql"
 )
 
@@ -67,7 +67,7 @@ func runTests(m *testing.M) (int, error) {
 	if err := db.PingContext(ctx); err != nil {
 		return 0, fmt.Errorf("failed to ping mysql at %s: %w", connStr, err)
 	}
-	if err := migrationsmysql.Run(db); err != nil {
+	if err := migrations.Run(db); err != nil {
 		return 0, fmt.Errorf("error running mysql migrations: %w", err)
 	}
 
