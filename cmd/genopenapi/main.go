@@ -47,6 +47,10 @@ type (
 	subscriptionPath struct {
 		SubscriptionID string `path:"subscriptionID"`
 	}
+
+	userPath struct {
+		UserID string `path:"userID"`
+	}
 )
 
 func main() {
@@ -95,6 +99,16 @@ func main() {
 			method: http.MethodGet, path: "/api/feed-entries/{feedEntryID}", id: "getFeedEntry", tag: "feed-entries",
 			summary:   "Get the full, reader-mode content of a feed entry.",
 			reqParams: feedEntryPath{}, resp: apiv1.FeedEntryResp{}, status: http.StatusOK,
+		},
+		{
+			method: http.MethodPost, path: "/api/users/{userID}/filters", id: "createFilter", tag: "filters",
+			summary:   "Create a filter (allow_list or disallow_list) used to curate the user's timeline during judgement.",
+			reqBody:   apiv1.PostFilterReq{}, reqParams: userPath{}, resp: apiv1.FilterResp{}, status: http.StatusCreated,
+		},
+		{
+			method: http.MethodGet, path: "/api/users/{userID}/filters", id: "listFilters", tag: "filters",
+			summary:   "List a user's filters.",
+			reqParams: userPath{}, resp: apiv1.FilterListResp{}, status: http.StatusOK,
 		},
 		{
 			method: http.MethodGet, path: "/api/oauth-login/gh", id: "startGithubLogin", tag: "auth",
