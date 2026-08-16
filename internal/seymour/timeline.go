@@ -20,6 +20,11 @@ type TimelineService interface {
 	UpdateTimelineEntry(ctx context.Context, id string, status TimelineEntryStatus) error
 	TimelineEntries(ctx context.Context, args TimelineEntriesArgs) ([]TimelineEntry, error)
 	CountTimelineEntries(ctx context.Context, args TimelineEntriesArgs) (int, error)
+
+	// CreateFilter inserts a new filter into storage, returning its ID.
+	CreateFilter(ctx context.Context, userID string, filter Filter) (string, error)
+	// UserFilters fetches all filters belonging to a user.
+	UserFilters(ctx context.Context, userID string) ([]Filter, error)
 }
 
 // Subscription represents a subscription to a feed.
@@ -73,3 +78,49 @@ const (
 	TimelineEntryStatusApproved          TimelineEntryStatus = "approved"
 	TimelineEntryStatusRejected          TimelineEntryStatus = "rejected"
 )
+
+// FilterType enumerates the different filter "features" a user can
+// configure to help curate their timeline during judgement.
+type FilterType string
+
+const (
+	FilterTypeAllowList    FilterType = "allow_list"
+	FilterTypeDisallowList FilterType = "disallow_list"
+	FilterTypeWebhook      FilterType = "webhook" // Not initially supported, but the main, planned feature.
+)
+
+// Filter is implemented by every filter config type, giving a bit of
+// polymorphism since each config has a different shape.
+type Filter interface {
+	Type() FilterType
+}
+
+// DisallowListConfig rejects an entry outright if its title or description
+// matches any of Keywords.
+type DisallowListConfig struct {
+	ID       string // ID of the underlying user_filters row.
+	UserID   string // UserID of the underlying user_filters row.
+	Keywords []string
+}
+
+func (DisallowListConfig) Type() FilterType { return FilterTypeDisallowList }
+
+// AllowListConfig, when present, requires an entry's title or description
+// to match one of Keywords in order to be approved.
+type AllowListConfig struct {
+	ID       string // ID of the underlying user_filters row.
+	UserID   string // UserID of the underlying user_filters row.
+	Keywords []string
+}
+
+func (AllowListConfig) Type() FilterType { return FilterTypeAllowList }
+
+// WebhookConfig calls out to Host to ask whether an entry should be
+// approved. Not yet reachable via the API or applied during judgement.
+type WebhookConfig struct {
+	ID     string // ID of the underlying user_filters row.
+	UserID string // UserID of the underlying user_filters row.
+	Host   string
+}
+
+func (WebhookConfig) Type() FilterType { return FilterTypeWebhook }

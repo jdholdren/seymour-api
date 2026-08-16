@@ -69,6 +69,8 @@ All routes below except `/api/viewer`, `/api/oauth-login/gh`, `/api/oauth-callba
 - `DELETE /api/subscriptions/{subscriptionID}` — Delete a subscription; ownership is checked by fetching the subscription and comparing its `user_id` to the session
 - `GET /api/users/{userID}/timeline` — Paginated curated timeline for that user (supports `feed_id`, `status` — one of `requires_judgement`/`approved`/`rejected`, defaults to all — and `from`/`to` publish-date filters as `YYYY-MM-DD`, parsed via `apiv1.ParseDate`). `{userID}` must match the session's user
 - `GET /api/feed-entries/{feedEntryID}` — Full article content via go-readability; any authenticated user can read any entry (feeds/entries are a shared global cache, not user-owned)
+- `POST /api/users/{userID}/filters` — Create a filter (`allow_list` or `disallow_list`, each with a `keywords` list; `webhook` is defined but returns 400, not yet supported) used to curate that user's timeline. `{userID}` must match the session's user. Not yet applied during judgement — see `docs/20260816_user_defined_filters.md`
+- `GET /api/users/{userID}/filters` — List that user's filters. `{userID}` must match the session's user
 - `GET /api/oauth-login/gh` — Start GitHub OAuth login; redirects to GitHub. Accepts `?s=<path>` for where to send the browser (on `FRONTEND_URL`) after login succeeds, defaults to `/`
 - `GET /api/oauth-callback/gh` — GitHub OAuth callback; verifies state, ensures the user via `UserService`, sets the `session` cookie, redirects to `FRONTEND_URL` + the requested path
 - `POST /api/logout` — Clears the `session` cookie
