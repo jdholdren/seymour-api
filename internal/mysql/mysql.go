@@ -1,21 +1,13 @@
-// Package mysql is the in-progress MySQL implementation of the seymour
-// service interfaces, replacing internal/sqlite. It currently starts as a
-// null implementation: every method returns ErrNotImplemented so that the
-// tests in this package fail red until the real queries are written.
+// Package mysql is the MySQL implementation of the seymour service
+// interfaces, replacing internal/sqlite.
 package mysql
 
 import (
-	"errors"
-
-	"github.com/jmoiron/sqlx"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/jmoiron/sqlx"
 
 	"github.com/jdholdren/seymour/internal/seymour"
 )
-
-// ErrNotImplemented is returned by every Repo method until the real MySQL
-// queries are written.
-var ErrNotImplemented = errors.New("mysql: not implemented")
 
 // Repo implements seymour.UserService, seymour.FeedService, and
 // seymour.TimelineService against a MySQL database.
