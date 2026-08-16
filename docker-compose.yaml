@@ -47,7 +47,11 @@ services:
     volumes:
       - mysql-data:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-seymour}"]
+      # -h 127.0.0.1 (not "localhost") forces a real TCP check: with "localhost"
+      # the mysql client uses the local socket, which the transient
+      # --skip-networking init server also answers on, so the healthcheck
+      # could pass before the real networked server was actually up.
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-seymour}"]
       interval: 5s
       timeout: 5s
       retries: 10
