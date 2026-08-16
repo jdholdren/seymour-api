@@ -16,12 +16,26 @@ const (
 	filterKeywordNamespace = "fltr-kw"
 )
 
-// userFilter is the root row a filter is built from; the type then decides
-// which other tables get batched in to assemble the final [seymour.Filter].
-type userFilter struct {
+// userFilterRow mirrors a row of the root user_filters table; the type then
+// decides which other tables get batched in to assemble the final
+// [seymour.Filter].
+type userFilterRow struct {
 	ID     string             `db:"id"`
 	UserID string             `db:"user_id"`
 	Type   seymour.FilterType `db:"type"`
+}
+
+// keywordRow mirrors a row of filter_keywords, the table shared by
+// allow_list and disallow_list filters.
+type keywordRow struct {
+	FilterID string `db:"filter_id"`
+	Keyword  string `db:"keyword"`
+}
+
+// webhookConfigRow mirrors a row of filter_webhooks, backing WebhookConfig.
+type webhookConfigRow struct {
+	FilterID string `db:"filter_id"`
+	Host     string `db:"host"`
 }
 
 func (r Repo) CreateFilter(ctx context.Context, userID string, filter seymour.Filter) (string, error) {
@@ -77,7 +91,7 @@ func insertFilterKeywords(ctx context.Context, tx *sqlx.Tx, filterID string, key
 func (r Repo) UserFilters(ctx context.Context, userID string) ([]seymour.Filter, error) {
 	const q = `SELECT id, user_id, type FROM user_filters WHERE user_id = ?;`
 
-	var rows []userFilter
+	var rows []userFilterRow
 	if err := r.db.SelectContext(ctx, &rows, q, userID); err != nil {
 		return nil, fmt.Errorf("error selecting user filters: %w", err)
 	}
@@ -95,13 +109,22 @@ func (r Repo) UserFilters(ctx context.Context, userID string) ([]seymour.Filter,
 		}
 	}
 
-	keywordsByFilter, err := r.filterKeywordsByFilterID(ctx, keywordFilterIDs)
+	keywordRows, err := r.keywordRowsByFilterID(ctx, keywordFilterIDs)
 	if err != nil {
 		return nil, err
 	}
-	hostByFilter, err := r.filterHostsByFilterID(ctx, webhookFilterIDs)
+	keywordsByFilter := make(map[string][]string, len(keywordFilterIDs))
+	for _, kwRow := range keywordRows {
+		keywordsByFilter[kwRow.FilterID] = append(keywordsByFilter[kwRow.FilterID], kwRow.Keyword)
+	}
+
+	webhookRows, err := r.webhookConfigRowsByFilterID(ctx, webhookFilterIDs)
 	if err != nil {
 		return nil, err
+	}
+	hostByFilter := make(map[string]string, len(webhookFilterIDs))
+	for _, whRow := range webhookRows {
+		hostByFilter[whRow.FilterID] = whRow.Host
 	}
 
 	filters := make([]seymour.Filter, 0, len(rows))
@@ -131,16 +154,9 @@ func (r Repo) UserFilters(ctx context.Context, userID string) ([]seymour.Filter,
 	return filters, nil
 }
 
-// filterKeyword mirrors a row of filter_keywords for batch-fetching.
-type filterKeyword struct {
-	FilterID string `db:"filter_id"`
-	Keyword  string `db:"keyword"`
-}
-
-func (r Repo) filterKeywordsByFilterID(ctx context.Context, filterIDs []string) (map[string][]string, error) {
-	out := make(map[string][]string)
+func (r Repo) keywordRowsByFilterID(ctx context.Context, filterIDs []string) ([]keywordRow, error) {
 	if len(filterIDs) == 0 {
-		return out, nil
+		return nil, nil
 	}
 
 	query, args, err := sq.Select("filter_id", "keyword").
@@ -151,28 +167,17 @@ func (r Repo) filterKeywordsByFilterID(ctx context.Context, filterIDs []string) 
 		return nil, fmt.Errorf("error constructing sql: %s", err)
 	}
 
-	var rows []filterKeyword
+	var rows []keywordRow
 	if err := r.db.SelectContext(ctx, &rows, query, args...); err != nil {
 		return nil, fmt.Errorf("error selecting filter keywords: %w", err)
 	}
 
-	for _, row := range rows {
-		out[row.FilterID] = append(out[row.FilterID], row.Keyword)
-	}
-
-	return out, nil
+	return rows, nil
 }
 
-// filterWebhook mirrors a row of filter_webhooks for batch-fetching.
-type filterWebhook struct {
-	FilterID string `db:"filter_id"`
-	Host     string `db:"host"`
-}
-
-func (r Repo) filterHostsByFilterID(ctx context.Context, filterIDs []string) (map[string]string, error) {
-	out := make(map[string]string)
+func (r Repo) webhookConfigRowsByFilterID(ctx context.Context, filterIDs []string) ([]webhookConfigRow, error) {
 	if len(filterIDs) == 0 {
-		return out, nil
+		return nil, nil
 	}
 
 	query, args, err := sq.Select("filter_id", "host").
@@ -183,14 +188,10 @@ func (r Repo) filterHostsByFilterID(ctx context.Context, filterIDs []string) (ma
 		return nil, fmt.Errorf("error constructing sql: %s", err)
 	}
 
-	var rows []filterWebhook
+	var rows []webhookConfigRow
 	if err := r.db.SelectContext(ctx, &rows, query, args...); err != nil {
 		return nil, fmt.Errorf("error selecting filter webhooks: %w", err)
 	}
 
-	for _, row := range rows {
-		out[row.FilterID] = row.Host
-	}
-
-	return out, nil
+	return rows, nil
 }
