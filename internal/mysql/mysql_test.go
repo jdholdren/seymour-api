@@ -33,7 +33,7 @@ func TestMain(m *testing.M) {
 // runTests starts the shared MySQL container, runs the suite, and tears the
 // container down before returning — kept separate from TestMain so cleanup
 // always runs, since TestMain's os.Exit would otherwise skip any defers.
-func runTests(m *testing.M) (code int, err error) {
+func runTests(m *testing.M) (int, error) {
 	ctx := context.Background()
 
 	container, err := tcmysql.Run(ctx, "mysql:8.4",
