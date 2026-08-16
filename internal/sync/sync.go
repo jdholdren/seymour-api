@@ -122,12 +122,12 @@ func parseRSS(feedID string, data []byte) (seymour.Feed, []seymour.FeedEntry, er
 			}
 
 			// Parse the publish date
-			var publishedAt seymour.DBTime
+			var publishedAt time.Time
 			if parsedTime, err := time.Parse(time.RFC1123, item.PubDate); err == nil {
-				publishedAt.Time = parsedTime
+				publishedAt = parsedTime
 			}
 			if parsedTime, err := time.Parse(time.RFC1123Z, item.PubDate); err == nil {
-				publishedAt.Time = parsedTime
+				publishedAt = parsedTime
 			}
 
 			entries = append(entries, seymour.FeedEntry{
@@ -175,9 +175,9 @@ func parseAtom(feedID string, data []byte) (seymour.Feed, []seymour.FeedEntry, e
 		}
 
 		// Parse the publish date (Atom uses RFC3339)
-		var publishedAt seymour.DBTime
+		var publishedAt time.Time
 		if parsedTime, err := time.Parse(time.RFC3339, entry.Updated); err == nil {
-			publishedAt.Time = parsedTime
+			publishedAt = parsedTime
 		}
 
 		entries = append(entries, seymour.FeedEntry{

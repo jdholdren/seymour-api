@@ -54,7 +54,7 @@ func (a activities) SyncFeed(ctx context.Context, feedID string, ignoreRecency b
 	}
 
 	// If recently synced, exit early, don't repeat work:
-	if !ignoreRecency && feed.LastSyncedAt != nil && time.Since(feed.LastSyncedAt.Time) < time.Hour {
+	if !ignoreRecency && feed.LastSyncedAt != nil && time.Since(*feed.LastSyncedAt) < time.Hour {
 		return nil
 	}
 
@@ -66,7 +66,7 @@ func (a activities) SyncFeed(ctx context.Context, feedID string, ignoreRecency b
 	if err := a.feeds.UpdateFeed(ctx, feed.ID, seymour.UpdateFeedArgs{
 		Title:       *feed.Title,
 		Description: *feed.Description,
-		LastSynced:  seymour.DBTime{Time: time.Now()},
+		LastSynced:  time.Now(),
 	}); err != nil {
 		return err
 	}

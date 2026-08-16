@@ -38,7 +38,7 @@ func apiFeed(f seymour.Feed) apiv1.FeedResp {
 		desc = *f.Description
 	}
 	if f.LastSyncedAt != nil {
-		lastSynced = &f.LastSyncedAt.Time
+		lastSynced = f.LastSyncedAt
 	}
 
 	return apiv1.FeedResp{
@@ -47,8 +47,8 @@ func apiFeed(f seymour.Feed) apiv1.FeedResp {
 		URL:          f.URL,
 		Description:  desc,
 		LastSyncedAt: lastSynced,
-		CreatedAt:    f.CreatedAt.Time,
-		UpdatedAt:    f.UpdatedAt.Time,
+		CreatedAt:    f.CreatedAt,
+		UpdatedAt:    f.UpdatedAt,
 	}
 }
 
@@ -125,13 +125,13 @@ func (s Server) getSusbcriptions(w http.ResponseWriter, r *http.Request) error {
 			feedDescription = *feed.Description
 		}
 		if feed.LastSyncedAt != nil {
-			lastSynced = &feed.LastSyncedAt.Time
+			lastSynced = feed.LastSyncedAt
 		}
 
 		resp.Subscriptions = append(resp.Subscriptions, apiv1.SubscriptionResp{
 			ID:              sub.ID,
 			FeedID:          sub.FeedID,
-			CreatedAt:       sub.CreatedAt.Time,
+			CreatedAt:       sub.CreatedAt,
 			FeedName:        feedName,
 			FeedDescription: feedDescription,
 			LastSynced:      lastSynced,
@@ -170,30 +170,6 @@ var validTimelineEntryStatuses = map[seymour.TimelineEntryStatus]bool{
 	seymour.TimelineEntryStatusRejected:          true,
 }
 
-// parseTimelineDateParam parses a "from"/"to" query value, accepting either
-// a full RFC3339 timestamp or a bare date (2006-01-02). A bare date is
-// anchored to the start of the day, or the end of the day if endOfDay is
-// true, so ?to=2026-08-05 includes the entire day.
-func parseTimelineDateParam(value string, endOfDay bool) (*time.Time, error) {
-	if value == "" {
-		return nil, nil
-	}
-
-	if t, err := time.Parse(time.RFC3339, value); err == nil {
-		return &t, nil
-	}
-
-	t, err := time.Parse("2006-01-02", value)
-	if err != nil {
-		return nil, fmt.Errorf("must be RFC3339 or YYYY-MM-DD: %s", value)
-	}
-	if endOfDay {
-		t = t.Add(24*time.Hour - time.Nanosecond)
-	}
-
-	return &t, nil
-}
-
 func (s Server) getTimeline(w http.ResponseWriter, r *http.Request) error {
 	var (
 		ctx    = r.Context()
@@ -209,13 +185,21 @@ func (s Server) getTimeline(w http.ResponseWriter, r *http.Request) error {
 		return seymour.E(fmt.Sprintf("invalid status: %s", status), http.StatusBadRequest)
 	}
 
-	fromDate, err := parseTimelineDateParam(query.Get("from"), false)
-	if err != nil {
-		return seymour.E(fmt.Sprintf("invalid from: %s", err), http.StatusBadRequest)
+	var fromDate apiv1.Date
+	if v := query.Get("from"); v != "" {
+		d, err := apiv1.ParseDate(v)
+		if err != nil {
+			return seymour.E(fmt.Sprintf("invalid from: %s", err), http.StatusBadRequest)
+		}
+		fromDate = d
 	}
-	toDate, err := parseTimelineDateParam(query.Get("to"), true)
-	if err != nil {
-		return seymour.E(fmt.Sprintf("invalid to: %s", err), http.StatusBadRequest)
+	var toDate apiv1.Date
+	if v := query.Get("to"); v != "" {
+		d, err := apiv1.ParseDate(v)
+		if err != nil {
+			return seymour.E(fmt.Sprintf("invalid to: %s", err), http.StatusBadRequest)
+		}
+		toDate = d
 	}
 
 	// Parse pagination parameters
@@ -292,7 +276,7 @@ func (s Server) getTimeline(w http.ResponseWriter, r *http.Request) error {
 			Title:       feedEntry.Title,
 			Description: feedEntry.Description,
 			URL:         feedEntry.Link,
-			PublishDate: feedEntry.PublishTime.Time,
+			PublishDate: feedEntry.PublishTime,
 		})
 	}
 
@@ -353,7 +337,7 @@ func (s Server) getFeedEntry(w http.ResponseWriter, r *http.Request) error {
 		URL:           entry.Link,
 		Title:         entry.Title,
 		Description:   entry.Description,
-		CreatedAt:     entry.CreatedAt.Time,
+		CreatedAt:     entry.CreatedAt,
 		ReaderContent: contents,
 	}
 	// Add to the cache for next time

@@ -2,6 +2,7 @@ package seymour
 
 import (
 	"context"
+	"time"
 )
 
 // User holds the mainly the id of the account interacting with the app.
@@ -9,10 +10,10 @@ import (
 // It has possibly many UserLogins that tie it to multiple ways of signing in,
 // although we only support github for now.
 type User struct {
-	ID            string  `db:"id"`
-	PreferredName *string `db:"preferred_name"`
-	CreatedAt     DBTime  `db:"created_at"`
-	UpdatedAt     DBTime  `db:"updated_at"`
+	ID            string    `db:"id"`
+	PreferredName *string   `db:"preferred_name"`
+	CreatedAt     time.Time `db:"created_at"`
+	UpdatedAt     time.Time `db:"updated_at"`
 }
 
 // Idp is an enum of the supported identity providers for login.
@@ -25,8 +26,8 @@ type UserLogin struct {
 	Idp    Idp    `db:"idp"`     // The source of the login.
 	IdpID  string `db:"idp_id"`  // The identifier of the user in the Idp's system.
 
-	LastLogin DBTime `db:"last_login"`
-	CreatedAt DBTime `db:"created_at"`
+	LastLogin time.Time `db:"last_login"`
+	CreatedAt time.Time `db:"created_at"`
 }
 
 type UserService interface {

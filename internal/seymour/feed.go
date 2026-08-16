@@ -1,6 +1,9 @@
 package seymour
 
-import "context"
+import (
+	"context"
+	"time"
+)
 
 // FeedService provides data operations for feeds and their entries.
 type FeedService interface {
@@ -19,30 +22,30 @@ type FeedService interface {
 
 // Feed represents an RSS feed's details.
 type Feed struct {
-	ID           string  `db:"id"`
-	Title        *string `db:"title"`
-	URL          string  `db:"url"`
-	Description  *string `db:"description"`
-	LastSyncedAt *DBTime `db:"last_synced_at"`
-	CreatedAt    DBTime  `db:"created_at"`
-	UpdatedAt    DBTime  `db:"updated_at"`
+	ID           string     `db:"id"`
+	Title        *string    `db:"title"`
+	URL          string     `db:"url"`
+	Description  *string    `db:"description"`
+	LastSyncedAt *time.Time `db:"last_synced_at"`
+	CreatedAt    time.Time  `db:"created_at"`
+	UpdatedAt    time.Time  `db:"updated_at"`
 }
 
 // FeedEntry represents a unique entry in an RSS feed.
 type FeedEntry struct {
-	ID          string `db:"id"`
-	FeedID      string `db:"feed_id"`
-	GUID        string `db:"guid"`
-	Title       string `db:"title"`
-	Description string `db:"description"`
-	CreatedAt   DBTime `db:"created_at"`
-	PublishTime DBTime `db:"publish_time"`
-	Link        string `db:"link"`
+	ID          string    `db:"id"`
+	FeedID      string    `db:"feed_id"`
+	GUID        string    `db:"guid"`
+	Title       string    `db:"title"`
+	Description string    `db:"description"`
+	CreatedAt   time.Time `db:"created_at"`
+	PublishTime time.Time `db:"publish_time"`
+	Link        string    `db:"link"`
 }
 
 // UpdateFeedArgs holds the optional fields for updating a feed.
 type UpdateFeedArgs struct {
 	Title       string
 	Description string
-	LastSynced  DBTime
+	LastSynced  time.Time
 }
