@@ -145,7 +145,7 @@ func TestFeedIDs_Pagination(t *testing.T) {
 	repo := testRepo(t)
 	ctx := context.Background()
 
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		_, err := repo.InsertFeed(ctx, "https://example.com/feed-"+string(rune('a'+i))+".xml")
 		require.NoError(t, err)
 	}
@@ -178,12 +178,22 @@ func TestInsertEntries_DedupesByGUID(t *testing.T) {
 		Link:        "https://example.com/entry",
 	}
 
-	require.NoError(t, repo.InsertEntries(ctx, []seymour.FeedEntry{entry}))
-	require.NoError(t, repo.InsertEntries(ctx, []seymour.FeedEntry{entry}))
+	// Insert twice with the same GUID; InsertEntries assigns a fresh ID to
+	// each slice it's given, so capture both IDs to confirm only the first
+	// insert's row actually landed.
+	first := []seymour.FeedEntry{entry}
+	require.NoError(t, repo.InsertEntries(ctx, first))
 
-	entries, err := repo.Entries(ctx, []string{entry.ID})
+	second := []seymour.FeedEntry{entry}
+	require.NoError(t, repo.InsertEntries(ctx, second))
+
+	found, err := repo.Entries(ctx, []string{first[0].ID})
 	require.NoError(t, err)
-	assert.Len(t, entries, 1)
+	assert.Len(t, found, 1)
+
+	skipped, err := repo.Entries(ctx, []string{second[0].ID})
+	require.NoError(t, err)
+	assert.Empty(t, skipped)
 }
 
 func TestEntry_NotFound(t *testing.T) {

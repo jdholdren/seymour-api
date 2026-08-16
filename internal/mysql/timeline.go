@@ -2,46 +2,227 @@ package mysql
 
 import (
 	"context"
+	"database/sql"
+	"errors"
+	"fmt"
+	"time"
+
+	sq "github.com/Masterminds/squirrel"
+	"github.com/google/uuid"
 
 	"github.com/jdholdren/seymour/internal/seymour"
 )
 
+const (
+	subscriptionNamespace  = "sub"
+	timelineEntryNamespace = "tl-entry"
+)
+
 func (r Repo) CreateSubscription(ctx context.Context, userID, feedID string) error {
-	return ErrNotImplemented
+	// MySQL has no INSERT OR IGNORE; INSERT IGNORE is the equivalent that
+	// silently skips the row on a unique-constraint violation.
+	const q = `INSERT IGNORE INTO subscriptions (id, user_id, feed_id) VALUES (?, ?, ?);`
+
+	id := fmt.Sprintf("%s-%s", uuid.New().String(), subscriptionNamespace)
+	if _, err := r.db.ExecContext(ctx, q, id, userID, feedID); err != nil {
+		return fmt.Errorf("error creating subscription: %w", err)
+	}
+
+	return nil
 }
 
 func (r Repo) AllSubscriptions(ctx context.Context, userID string) ([]seymour.Subscription, error) {
-	return nil, ErrNotImplemented
-}
+	const q = `SELECT * FROM subscriptions WHERE user_id = ?;`
 
-func (r Repo) Subscription(ctx context.Context, id string) (seymour.Subscription, error) {
-	return seymour.Subscription{}, ErrNotImplemented
+	var subs []seymour.Subscription
+	if err := r.db.SelectContext(ctx, &subs, q, userID); err != nil {
+		return nil, fmt.Errorf("error selecting subscriptions: %s", err)
+	}
+
+	return subs, nil
 }
 
 func (r Repo) DeleteSubscription(ctx context.Context, id string) error {
-	return ErrNotImplemented
+	const q = `DELETE FROM subscriptions WHERE id = ?;`
+
+	res, err := r.db.ExecContext(ctx, q, id)
+	if err != nil {
+		return fmt.Errorf("error deleting subscription: %w", err)
+	}
+
+	n, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("error checking rows affected: %w", err)
+	}
+	if n == 0 {
+		return seymour.ErrNotFound
+	}
+
+	return nil
+}
+
+func (r Repo) Subscription(ctx context.Context, id string) (seymour.Subscription, error) {
+	const q = `SELECT * FROM subscriptions WHERE id = ?;`
+
+	var sub seymour.Subscription
+	err := r.db.GetContext(ctx, &sub, q, id)
+	if errors.Is(err, sql.ErrNoRows) {
+		return seymour.Subscription{}, seymour.ErrNotFound
+	}
+	if err != nil {
+		return seymour.Subscription{}, fmt.Errorf("error selecting subscription: %s", err)
+	}
+
+	return sub, nil
 }
 
 func (r Repo) MissingEntries(ctx context.Context) ([]seymour.MissingEntry, error) {
-	return nil, ErrNotImplemented
-}
+	const q = `
+	SELECT
+		subs.user_id AS user_id,
+		fe.feed_id AS feed_id,
+		fe.id AS feed_entry_id
+	FROM
+		feed_entries fe
+		INNER JOIN subscriptions subs ON subs.feed_id = fe.feed_id
+		LEFT JOIN timeline_entries ts ON ts.feed_entry_id = fe.id AND ts.user_id = subs.user_id
+		WHERE ts.feed_entry_id IS NULL ;
+	`
 
-func (r Repo) EntriesNeedingJudgement(ctx context.Context, limit uint) ([]seymour.TimelineEntry, error) {
-	return nil, ErrNotImplemented
+	var missingEntries []seymour.MissingEntry
+	if err := r.db.SelectContext(ctx, &missingEntries, q); err != nil {
+		return nil, fmt.Errorf("error selecting missing entries: %s", err)
+	}
+
+	return missingEntries, nil
 }
 
 func (r Repo) InsertEntry(ctx context.Context, entry seymour.TimelineEntry) error {
-	return ErrNotImplemented
+	const q = `INSERT IGNORE INTO timeline_entries (
+		id,
+		user_id,
+		feed_entry_id,
+		status,
+		feed_id
+	) VALUES (
+		?,
+		?,
+		?,
+		?,
+		?
+	);
+	`
+
+	entry.ID = fmt.Sprintf("%s-%s", uuid.New().String(), timelineEntryNamespace)
+	if _, err := r.db.ExecContext(ctx, q, entry.ID, entry.UserID, entry.FeedEntryID, entry.Status, entry.FeedID); err != nil {
+		return fmt.Errorf("error inserting entry: %s", err)
+	}
+
+	return nil
+}
+
+func (r Repo) EntriesNeedingJudgement(ctx context.Context, limit uint) ([]seymour.TimelineEntry, error) {
+	const q = `
+	SELECT
+		id,
+		feed_entry_id,
+		created_at,
+		status,
+		feed_id
+	FROM
+		timeline_entries
+	WHERE
+		status = ?
+	LIMIT ?;
+	`
+
+	var entries []seymour.TimelineEntry
+	if err := r.db.SelectContext(ctx, &entries, q, seymour.TimelineEntryStatusRequiresJudgement, limit); err != nil {
+		return nil, fmt.Errorf("error selecting entries needing judgement: %s", err)
+	}
+
+	return entries, nil
 }
 
 func (r Repo) UpdateTimelineEntry(ctx context.Context, id string, status seymour.TimelineEntryStatus) error {
-	return ErrNotImplemented
+	const q = `UPDATE timeline_entries SET status = ? WHERE id = ?;`
+	if _, err := r.db.ExecContext(ctx, q, status, id); err != nil {
+		return fmt.Errorf("error updating entry: %s", err)
+	}
+
+	return nil
+}
+
+// timelineEntriesFilters applies the where clauses (and, when a date filter
+// is present, the join needed to reach feed_entries.publish_time) shared by
+// TimelineEntries and CountTimelineEntries.
+func timelineEntriesFilters(q sq.SelectBuilder, args seymour.TimelineEntriesArgs) sq.SelectBuilder {
+	where := sq.Eq{"timeline_entries.user_id": args.UserID}
+	if args.Status != "" {
+		where["timeline_entries.status"] = args.Status
+	}
+	if args.FeedID != "" {
+		where["timeline_entries.feed_id"] = args.FeedID
+	}
+	q = q.Where(where)
+
+	if args.FromDate != nil || args.ToDate != nil {
+		q = q.Join("feed_entries ON feed_entries.id = timeline_entries.feed_entry_id")
+		if args.FromDate != nil {
+			q = q.Where(sq.GtOrEq{"feed_entries.publish_time": args.FromDate.Format(time.RFC3339)})
+		}
+		if args.ToDate != nil {
+			q = q.Where(sq.LtOrEq{"feed_entries.publish_time": args.ToDate.Format(time.RFC3339)})
+		}
+	}
+
+	return q
 }
 
 func (r Repo) TimelineEntries(ctx context.Context, args seymour.TimelineEntriesArgs) ([]seymour.TimelineEntry, error) {
-	return nil, ErrNotImplemented
+	q := sq.Select(
+		"timeline_entries.id",
+		"timeline_entries.user_id",
+		"timeline_entries.feed_entry_id",
+		"timeline_entries.created_at",
+		"timeline_entries.status",
+		"timeline_entries.feed_id",
+	).From("timeline_entries").OrderBy("timeline_entries.created_at DESC")
+	q = timelineEntriesFilters(q, args)
+
+	if args.Limit > 0 {
+		q = q.Limit(args.Limit)
+	}
+	if args.Offset > 0 {
+		q = q.Offset(args.Offset)
+	}
+
+	query, queryArgs, err := q.ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("error generating SQL query: %s", err)
+	}
+
+	var entries []seymour.TimelineEntry
+	if err := r.db.SelectContext(ctx, &entries, query, queryArgs...); err != nil {
+		return nil, fmt.Errorf("error selecting timeline entries: %s", err)
+	}
+
+	return entries, nil
 }
 
 func (r Repo) CountTimelineEntries(ctx context.Context, args seymour.TimelineEntriesArgs) (int, error) {
-	return 0, ErrNotImplemented
+	q := sq.Select("COUNT(*)").From("timeline_entries")
+	q = timelineEntriesFilters(q, args)
+
+	query, queryArgs, err := q.ToSql()
+	if err != nil {
+		return 0, fmt.Errorf("error generating SQL query: %s", err)
+	}
+
+	var count int
+	if err := r.db.GetContext(ctx, &count, query, queryArgs...); err != nil {
+		return 0, fmt.Errorf("error counting timeline entries: %s", err)
+	}
+
+	return count, nil
 }
