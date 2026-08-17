@@ -162,6 +162,84 @@ func (s Server) deleteSubscription(w http.ResponseWriter, r *http.Request) error
 	return nil
 }
 
+func apiFilter(f seymour.Filter) apiv1.Filter {
+	switch cfg := f.(type) {
+	case seymour.AllowListConfig:
+		return apiv1.Filter{
+			ID:              cfg.ID,
+			Type:            apiv1.FilterType(cfg.Type()),
+			AllowListConfig: &apiv1.AllowListConfig{Keywords: cfg.Keywords},
+		}
+	case seymour.DisallowListConfig:
+		return apiv1.Filter{
+			ID:                 cfg.ID,
+			Type:               apiv1.FilterType(cfg.Type()),
+			DisallowListConfig: &apiv1.DisallowListConfig{Keywords: cfg.Keywords},
+		}
+	default:
+		return apiv1.Filter{Type: apiv1.FilterType(f.Type())}
+	}
+}
+
+// filterUserID pulls the owning user's ID back out of a [seymour.Filter],
+// type-switching the same way [Repo.CreateFilter] does when persisting one.
+func filterUserID(f seymour.Filter) string {
+	switch cfg := f.(type) {
+	case seymour.AllowListConfig:
+		return cfg.UserID
+	case seymour.DisallowListConfig:
+		return cfg.UserID
+	default:
+		return ""
+	}
+}
+
+func (s Server) getUserFilters(w http.ResponseWriter, r *http.Request) error {
+	var (
+		ctx    = r.Context()
+		userID = mux.Vars(r)["userID"]
+	)
+	if userID != ctxUserID(ctx) {
+		return seymour.E("forbidden", http.StatusForbidden)
+	}
+
+	filters, err := s.timeline.UserFilters(ctx, userID)
+	if err != nil {
+		return err
+	}
+
+	resp := apiv1.UserFiltersResp{
+		Filters: make([]apiv1.Filter, 0, len(filters)),
+	}
+	for _, f := range filters {
+		resp.Filters = append(resp.Filters, apiFilter(f))
+	}
+
+	return writeJSON(w, http.StatusOK, resp)
+}
+
+func (s Server) deleteFilter(w http.ResponseWriter, r *http.Request) error {
+	var (
+		ctx      = r.Context()
+		filterID = mux.Vars(r)["filterID"]
+	)
+
+	f, err := s.timeline.Filter(ctx, filterID)
+	if err != nil {
+		return err
+	}
+	if filterUserID(f) != ctxUserID(ctx) {
+		return seymour.E("forbidden", http.StatusForbidden)
+	}
+
+	if err := s.timeline.DeleteFilter(ctx, filterID); err != nil {
+		return err
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+	return nil
+}
+
 // validTimelineEntryStatuses are the values getTimeline accepts for its
 // ?status= filter.
 var validTimelineEntryStatuses = map[seymour.TimelineEntryStatus]bool{

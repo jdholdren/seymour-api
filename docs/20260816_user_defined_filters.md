@@ -59,9 +59,41 @@ func (WebhookConfig) Type() FilterType { return FilterTypeWebhook }
 
 ## Filter API
 
-TODO: Define loose paths and shapes
-
 ### External
+
+#### GET /users/{userID}/filters
+
+Authz: Checks that the userID matches the current session.
+
+Returns all filters for the user that they have created.
+
+Response shape:
+```go
+type FilterType string
+
+type Filter struct {
+	ID string `json:"id"`
+	Type FilterType `json:"type"`
+	AllowListConfig AllowListConfig `json:"allow_list_config,omitempty"`
+	DisllowListConfig DisllowListConfig `json:"disallow_list_config,omitempty"`
+}
+
+type AllowListConfig struct {
+	Keywords []string `json:"keywords"`
+}
+
+type UserFiltersResp struct {
+	Filters []Filter
+}
+```
+
+NOTE: prefer a lack of polymorphism in the API layer. Internal layer it's more fine.
+
+#### DELETE /filters/{filterID}
+
+Authz: Checks that the user id on the filter matches the session
+
+Removes the filter and returns a 202.
 
 ### Internal
 
@@ -86,4 +118,4 @@ type TimelineService interface {
 
 ## Filter Application
 
-TODO: How it gets applied during judgement of a timeline
+Out of scope for now: How it gets applied during judgement of a timeline

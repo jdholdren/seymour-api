@@ -25,6 +25,10 @@ type TimelineService interface {
 	CreateFilter(ctx context.Context, userID string, filter Filter) (string, error)
 	// UserFilters fetches all filters belonging to a user.
 	UserFilters(ctx context.Context, userID string) ([]Filter, error)
+	// Filter fetches a single filter by ID.
+	Filter(ctx context.Context, id string) (Filter, error)
+	// DeleteFilter removes a filter, and its backing config, from storage.
+	DeleteFilter(ctx context.Context, id string) error
 }
 
 // Subscription represents a subscription to a feed.
