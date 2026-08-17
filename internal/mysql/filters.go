@@ -2,6 +2,8 @@ package mysql
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
 
 	sq "github.com/Masterminds/squirrel"
@@ -84,6 +86,65 @@ func (r Repo) UserFilters(ctx context.Context, userID string) ([]seymour.Filter,
 	if err := r.db.SelectContext(ctx, &rows, q, userID); err != nil {
 		return nil, fmt.Errorf("error selecting user filters: %w", err)
 	}
+
+	return r.filtersFromRows(ctx, rows)
+}
+
+func (r Repo) Filter(ctx context.Context, id string) (seymour.Filter, error) {
+	const q = `SELECT id, user_id, type FROM user_filters WHERE id = ?;`
+
+	var row userFilterRow
+	err := r.db.GetContext(ctx, &row, q, id)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, seymour.ErrNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("error selecting filter: %w", err)
+	}
+
+	filters, err := r.filtersFromRows(ctx, []userFilterRow{row})
+	if err != nil {
+		return nil, err
+	}
+
+	return filters[0], nil
+}
+
+func (r Repo) DeleteFilter(ctx context.Context, id string) error {
+	tx, err := r.db.BeginTxx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("error starting transaction: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	const deleteKeywordsQ = `DELETE FROM filter_keywords WHERE filter_id = ?;`
+	if _, err := tx.ExecContext(ctx, deleteKeywordsQ, id); err != nil {
+		return fmt.Errorf("error deleting filter keywords: %w", err)
+	}
+
+	const deleteFilterQ = `DELETE FROM user_filters WHERE id = ?;`
+	res, err := tx.ExecContext(ctx, deleteFilterQ, id)
+	if err != nil {
+		return fmt.Errorf("error deleting filter: %w", err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("error checking rows affected: %w", err)
+	}
+	if n == 0 {
+		return seymour.ErrNotFound
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("error committing transaction: %w", err)
+	}
+
+	return nil
+}
+
+// filtersFromRows batches the keywords for the given user_filters rows and
+// assembles them into the polymorphic [seymour.Filter] configs.
+func (r Repo) filtersFromRows(ctx context.Context, rows []userFilterRow) ([]seymour.Filter, error) {
 	if len(rows) == 0 {
 		return nil, nil
 	}
