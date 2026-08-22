@@ -67,7 +67,7 @@ func main() {
 	defer func() { _ = dbx.Close() }()
 
 	// Run all migrations
-	if err := migrations.Run(dbx); err != nil {
+	if err := migrations.Run(dbx, cfg.Database); err != nil {
 		log.Fatalf("error running migrations: %s", err)
 	}
 
