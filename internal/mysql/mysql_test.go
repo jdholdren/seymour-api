@@ -67,7 +67,7 @@ func runTests(m *testing.M) (int, error) {
 	if err := db.PingContext(ctx); err != nil {
 		return 0, fmt.Errorf("failed to ping mysql at %s: %w", connStr, err)
 	}
-	if err := migrations.Run(db); err != nil {
+	if err := migrations.Run(db, connStr); err != nil {
 		return 0, fmt.Errorf("error running mysql migrations: %w", err)
 	}
 
