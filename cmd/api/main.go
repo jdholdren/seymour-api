@@ -73,9 +73,12 @@ func main() {
 
 	repo := seymysql.New(dbx)
 
-	// Retry until temporal is ready
+	// Retry until temporal is ready, capped at 15s
+	temporalCtx, temporalCancel := context.WithTimeout(ctx, 15*time.Second)
+	defer temporalCancel()
+
 	var temporalCli client.Client
-	if err := retry.Fibonacci(ctx, 1*time.Second, func(ctx context.Context) error {
+	if err := retry.Fibonacci(temporalCtx, 1*time.Second, func(ctx context.Context) error {
 		c, err := client.Dial(client.Options{
 			HostPort: cfg.TemporalHostPort,
 		})
