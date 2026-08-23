@@ -78,6 +78,11 @@ func SubscribeToFeed(ctx context.Context, c client.Client, feedURL, userID strin
 	startOptions := c.NewWithStartWorkflowOperation(
 		client.StartWorkflowOptions{
 			TaskQueue: TaskQueue,
+			// Required by UpdateWithStartWorkflow. No WorkflowID is set above, so
+			// each call gets an auto-generated one and a collision isn't expected;
+			// USE_EXISTING just means if one ever does occur, the update attaches
+			// to the already-running workflow instead of failing the request.
+			WorkflowIDConflictPolicy: enums.WORKFLOW_ID_CONFLICT_POLICY_USE_EXISTING,
 		},
 		workflows{}.CreateFeed,
 		createFeedArgs{FeedUrl: feedURL, UserID: userID},
@@ -87,7 +92,8 @@ func SubscribeToFeed(ctx context.Context, c client.Client, feedURL, userID strin
 		client.UpdateWithStartWorkflowOptions{
 			StartWorkflowOperation: startOptions,
 			UpdateOptions: client.UpdateWorkflowOptions{
-				UpdateName: createFeedUpdateName,
+				UpdateName:   createFeedUpdateName,
+				WaitForStage: client.WorkflowUpdateStageCompleted,
 			},
 		},
 	)
@@ -116,9 +122,10 @@ type createFeedArgs struct {
 }
 
 // CreateFeed inserts a new feed, tries to sync, and rolls back if it's unable to.
+// Once synced, it subscribes args.UserID to the feed.
 //
-// Returns the ID of the created feed.
-func (w workflows) CreateFeed(ctx workflow.Context, args createFeedArgs) (string, error) {
+// Returns the ID of the created subscription.
+func (w workflows) CreateFeed(ctx workflow.Context, args createFeedArgs) (feedID string, err error) {
 	options := workflow.ActivityOptions{
 		StartToCloseTimeout: 3 * time.Second,
 		RetryPolicy: &temporal.RetryPolicy{
@@ -131,25 +138,49 @@ func (w workflows) CreateFeed(ctx workflow.Context, args createFeedArgs) (string
 	ctx = workflow.WithActivityOptions(ctx, options)
 
 	var (
-		subscriptionID         string
-		createSubscriptionDone bool
-		setupErr               error
+		subscriptionID string
+		setupDone      bool
+		setupErr       error
 	)
 	if err := workflow.SetUpdateHandler(ctx, createFeedUpdateName,
 		func(ctx workflow.Context) (string, error) {
-			if err := workflow.Await(ctx, func() bool { return createSubscriptionDone }); err != nil {
+			if err := workflow.Await(ctx, func() bool { return setupDone }); err != nil {
 				return "", err
 			}
 			return subscriptionID, setupErr
 		}); err != nil {
 		return "", fmt.Errorf("error setting update handler: %s", err)
 	}
+	// The update handler above blocks until setupDone is true, however this
+	// function returns, so make sure it's always eventually set: on any
+	// early return (feed creation, sync, or subscription creation failing),
+	// this reports the same error back to the caller of SubscribeToFeed
+	// instead of leaving it hanging.
+	defer func() {
+		if !setupDone {
+			setupErr = err
+			setupDone = true
+		}
+	}()
 
-	var feedID string
-	setupErr = workflow.ExecuteActivity(ctx, acts.CreateFeed, args.FeedUrl).Get(ctx, &feedID)
-	if setupErr != nil {
-		l.Error("failed to create feed", "error", setupErr)
-		return "", setupErr
+	err = workflow.ExecuteActivity(ctx, acts.CreateFeed, args.FeedUrl).Get(ctx, &feedID)
+	if err != nil {
+		l.Error("failed to create feed", "error", err)
+		return "", err
+	}
+
+	// Sync the feed before subscribing the user to it, so a subscription is
+	// never created for a feed that couldn't actually be synced.
+	if syncErr := workflow.ExecuteActivity(ctx, acts.SyncFeed, feedID).Get(ctx, nil); syncErr != nil {
+		l.Error("failed to sync feed", "feed_id", feedID, "error", syncErr)
+
+		// If there's an issue syncing, remove the feed
+		if rmErr := workflow.ExecuteActivity(ctx, acts.RemoveFeed, feedID).Get(ctx, nil); rmErr != nil {
+			l.Error("failed to remove feed", "feed_id", feedID, "error", rmErr)
+			return "", rmErr
+		}
+
+		return "", syncErr
 	}
 
 	setupErr = workflow.ExecuteActivity(ctx, acts.CreateSubscription, args.UserID, feedID).Get(ctx, &subscriptionID)
@@ -157,32 +188,19 @@ func (w workflows) CreateFeed(ctx workflow.Context, args createFeedArgs) (string
 		l.Error("failed to create subscription", "error", setupErr)
 		return "", setupErr
 	}
-	createSubscriptionDone = true // Signal update handler
+	setupDone = true // Signal update handler with the real subscription ID
 
-	// Sync the feed
-	err := workflow.ExecuteActivity(ctx, acts.SyncFeed, feedID).Get(ctx, nil)
-	if err != nil {
-		l.Error("failed to sync feed", "feed_id", feedID, "error", err)
-
-		// If there's an issue syncing, remove the feed
-		if err := workflow.ExecuteActivity(ctx, acts.RemoveFeed, feedID).Get(ctx, nil); err != nil {
-			l.Error("failed to remove feed", "feed_id", feedID, "error", err)
-			return "", err
-		}
-
-		return "", err
-	}
-
-	// Trigger a refresh of the timeline
+	// Trigger a refresh of the timeline, and wait for it (and the judging it
+	// kicks off) to finish.
 	ctx = workflow.WithChildOptions(ctx, workflow.ChildWorkflowOptions{
 		TaskQueue: TaskQueue,
 	})
-	if err := workflow.ExecuteChildWorkflow(ctx, workflows.RefreshTimeline).GetChildWorkflowExecution().Get(ctx, nil); err != nil {
-		l.Error("failed to start child workflow", "error", err)
+	if err := workflow.ExecuteChildWorkflow(ctx, workflows.RefreshTimeline).Get(ctx, nil); err != nil {
+		l.Error("child workflow failed", "error", err)
 		return "", err
 	}
 
-	return feedID, nil
+	return subscriptionID, nil
 }
 
 // RefreshTimeline syncs any missing entries based on
