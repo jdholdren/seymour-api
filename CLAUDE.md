@@ -57,6 +57,32 @@ You should follow these loops during normal iteration of making a change, unless
 4. Changes are now live
 5. Repeat until behavior is verified
 
+#### When it's safe to skip
+
+Skip the After-Building Loop only when the diff is provably a no-op on
+compiled behavior — e.g. renaming a local variable or unexported
+identifier with no other references, reordering declarations, or
+comment/doc/formatting changes — and `gopls`/`go build`/`go vet` confirm
+there's no reference to it outside the file. "No other reference"
+verified by tooling is necessary but not sufficient on its own; still run
+the loop at least once for the first behavior-changing edit in a batch,
+even if later edits in that batch look safe.
+
+Always run it for:
+- Any change to control flow, error handling, or a DB/RPC/HTTP call
+- Function/workflow/activity signature changes, even when every caller is
+  updated to match — signature changes are exactly where argument-order
+  or serialization bugs hide and won't show up as a compile error (e.g.
+  a Temporal call site passing positional args that don't match a
+  struct-typed workflow parameter)
+- Anything affecting wire format: JSON tags, `db` tags, Temporal
+  update/signal/workflow names, or other serialized identifiers
+- New or bumped dependencies
+- Config/env/startup wiring changes
+
+When unsure whether an edit qualifies as a no-op, don't guess — run the
+loop.
+
 # The gopls MCP server
 
 These instructions describe how to efficiently work in the Go programming language using the gopls MCP server. You can load this file directly into a session where the gopls MCP server is connected.
