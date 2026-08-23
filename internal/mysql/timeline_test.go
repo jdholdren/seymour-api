@@ -115,6 +115,41 @@ func TestTimelineEntries_FilterByStatus(t *testing.T) {
 	assert.Equal(t, seymour.TimelineEntryStatusApproved, approved[0].Status)
 }
 
+func TestTimelineEntries_SortedByPublishDate(t *testing.T) {
+	repo := testRepo(t)
+	ctx := t.Context()
+
+	older := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	newer := time.Date(2026, 6, 15, 0, 0, 0, 0, time.UTC)
+	newest := time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC)
+
+	// Seed out of publish-date order, to make sure sorting isn't just
+	// reflecting insertion/created_at order.
+	seedTimelineEntry(t, repo, "user-1", "newer-entry", newer, seymour.TimelineEntryStatusApproved)
+	seedTimelineEntry(t, repo, "user-1", "oldest-entry", older, seymour.TimelineEntryStatusApproved)
+	seedTimelineEntry(t, repo, "user-1", "newest-entry", newest, seymour.TimelineEntryStatusApproved)
+
+	entries, err := repo.TimelineEntries(ctx, seymour.TimelineEntriesArgs{UserID: "user-1"})
+	require.NoError(t, err)
+	require.Len(t, entries, 3)
+
+	feedEntryIDs := []string{entries[0].FeedEntryID, entries[1].FeedEntryID, entries[2].FeedEntryID}
+	feedEntries, err := repo.Entries(ctx, feedEntryIDs)
+	require.NoError(t, err)
+
+	feedEntryByID := make(map[string]seymour.FeedEntry, len(feedEntries))
+	for _, fe := range feedEntries {
+		feedEntryByID[fe.ID] = fe
+	}
+
+	guids := []string{
+		feedEntryByID[entries[0].FeedEntryID].GUID,
+		feedEntryByID[entries[1].FeedEntryID].GUID,
+		feedEntryByID[entries[2].FeedEntryID].GUID,
+	}
+	assert.Equal(t, []string{"newest-entry", "newer-entry", "oldest-entry"}, guids)
+}
+
 func TestTimelineEntries_FilterByDateRange(t *testing.T) {
 	repo := testRepo(t)
 	ctx := t.Context()

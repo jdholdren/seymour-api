@@ -150,10 +150,18 @@ func (r Repo) UpdateTimelineEntry(ctx context.Context, id string, status seymour
 	return nil
 }
 
-// timelineEntriesFilters applies the where clauses (and, when a date filter
-// is present, the join needed to reach feed_entries.publish_time) shared by
-// TimelineEntries and CountTimelineEntries.
-func timelineEntriesFilters(q sq.SelectBuilder, args seymour.TimelineEntriesArgs) sq.SelectBuilder {
+func (r Repo) TimelineEntries(ctx context.Context, args seymour.TimelineEntriesArgs) ([]seymour.TimelineEntry, error) {
+	q := sq.Select(
+		"timeline_entries.id",
+		"timeline_entries.user_id",
+		"timeline_entries.feed_entry_id",
+		"timeline_entries.created_at",
+		"timeline_entries.status",
+		"timeline_entries.feed_id",
+	).From("timeline_entries").
+		Join("feed_entries ON feed_entries.id = timeline_entries.feed_entry_id").
+		OrderBy("feed_entries.publish_time DESC")
+
 	where := sq.Eq{"timeline_entries.user_id": args.UserID}
 	if args.Status != "" {
 		where["timeline_entries.status"] = args.Status
@@ -163,29 +171,12 @@ func timelineEntriesFilters(q sq.SelectBuilder, args seymour.TimelineEntriesArgs
 	}
 	q = q.Where(where)
 
-	if !args.FromDate.IsZero() || !args.ToDate.IsZero() {
-		q = q.Join("feed_entries ON feed_entries.id = timeline_entries.feed_entry_id")
-		if !args.FromDate.IsZero() {
-			q = q.Where(sq.GtOrEq{"feed_entries.publish_time": args.FromDate.Beginning()})
-		}
-		if !args.ToDate.IsZero() {
-			q = q.Where(sq.LtOrEq{"feed_entries.publish_time": args.ToDate.End()})
-		}
+	if !args.FromDate.IsZero() {
+		q = q.Where(sq.GtOrEq{"feed_entries.publish_time": args.FromDate.Beginning()})
 	}
-
-	return q
-}
-
-func (r Repo) TimelineEntries(ctx context.Context, args seymour.TimelineEntriesArgs) ([]seymour.TimelineEntry, error) {
-	q := sq.Select(
-		"timeline_entries.id",
-		"timeline_entries.user_id",
-		"timeline_entries.feed_entry_id",
-		"timeline_entries.created_at",
-		"timeline_entries.status",
-		"timeline_entries.feed_id",
-	).From("timeline_entries").OrderBy("timeline_entries.created_at DESC")
-	q = timelineEntriesFilters(q, args)
+	if !args.ToDate.IsZero() {
+		q = q.Where(sq.LtOrEq{"feed_entries.publish_time": args.ToDate.End()})
+	}
 
 	if args.Limit > 0 {
 		q = q.Limit(args.Limit)
@@ -209,7 +200,25 @@ func (r Repo) TimelineEntries(ctx context.Context, args seymour.TimelineEntriesA
 
 func (r Repo) CountTimelineEntries(ctx context.Context, args seymour.TimelineEntriesArgs) (int, error) {
 	q := sq.Select("COUNT(*)").From("timeline_entries")
-	q = timelineEntriesFilters(q, args)
+
+	where := sq.Eq{"timeline_entries.user_id": args.UserID}
+	if args.Status != "" {
+		where["timeline_entries.status"] = args.Status
+	}
+	if args.FeedID != "" {
+		where["timeline_entries.feed_id"] = args.FeedID
+	}
+	q = q.Where(where)
+
+	if !args.FromDate.IsZero() || !args.ToDate.IsZero() {
+		q = q.Join("feed_entries ON feed_entries.id = timeline_entries.feed_entry_id")
+		if !args.FromDate.IsZero() {
+			q = q.Where(sq.GtOrEq{"feed_entries.publish_time": args.FromDate.Beginning()})
+		}
+		if !args.ToDate.IsZero() {
+			q = q.Where(sq.LtOrEq{"feed_entries.publish_time": args.ToDate.End()})
+		}
+	}
 
 	query, queryArgs, err := q.ToSql()
 	if err != nil {
