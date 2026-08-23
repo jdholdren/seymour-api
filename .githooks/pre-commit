@@ -1,0 +1,15 @@
+#!/bin/sh
+# Runs golangci-lint before allowing a commit, mirroring .github/workflows/lint.yml.
+# Enable with: make install-hooks
+
+if ! command -v golangci-lint >/dev/null 2>&1; then
+	echo "pre-commit: golangci-lint not found on PATH, skipping lint check" >&2
+	echo "install it: https://golangci-lint.run/welcome/install/" >&2
+	exit 0
+fi
+
+echo "pre-commit: running golangci-lint..."
+if ! golangci-lint run ./...; then
+	echo "pre-commit: golangci-lint failed, commit aborted" >&2
+	exit 1
+fi

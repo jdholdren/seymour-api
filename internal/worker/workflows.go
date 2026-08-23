@@ -137,7 +137,9 @@ func (w workflows) CreateFeed(ctx workflow.Context, args createFeedArgs) (string
 	)
 	if err := workflow.SetUpdateHandler(ctx, createFeedUpdateName,
 		func(ctx workflow.Context) (string, error) {
-			workflow.Await(ctx, func() bool { return createSubscriptionDone })
+			if err := workflow.Await(ctx, func() bool { return createSubscriptionDone }); err != nil {
+				return "", err
+			}
 			return subscriptionID, setupErr
 		}); err != nil {
 		return "", fmt.Errorf("error setting update handler: %s", err)
@@ -211,9 +213,14 @@ func (w workflows) RefreshTimeline(ctx workflow.Context) error {
 
 	// Start child workflow to judge the timeline
 	ctx = workflow.WithChildOptions(ctx, workflow.ChildWorkflowOptions{
-		// Ensure only one judgement at a time, allow current one to process
+		// Ensure only one judgement at a time, allow current one to process.
+		// TERMINATE_IF_RUNNING is deprecated in favor of pairing ALLOW_DUPLICATE
+		// with WorkflowIDConflictPolicy: TERMINATE_EXISTING, but that conflict
+		// policy field only exists on top-level StartWorkflowOptions, not
+		// ChildWorkflowOptions, so this is still the only way to dedupe a
+		// child workflow by ID.
 		WorkflowID:            "judge-timeline",
-		WorkflowIDReusePolicy: enums.WORKFLOW_ID_REUSE_POLICY_TERMINATE_IF_RUNNING,
+		WorkflowIDReusePolicy: enums.WORKFLOW_ID_REUSE_POLICY_TERMINATE_IF_RUNNING, //nolint:staticcheck
 		ParentClosePolicy:     enums.PARENT_CLOSE_POLICY_ABANDON,
 		TaskQueue:             TaskQueue,
 	})
