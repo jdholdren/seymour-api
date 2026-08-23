@@ -131,7 +131,6 @@ func (w workflows) CreateFeed(ctx workflow.Context, args createFeedArgs) (string
 	ctx = workflow.WithActivityOptions(ctx, options)
 
 	var (
-		feedID                 string
 		subscriptionID         string
 		createSubscriptionDone bool
 		setupErr               error
@@ -144,6 +143,7 @@ func (w workflows) CreateFeed(ctx workflow.Context, args createFeedArgs) (string
 		return "", fmt.Errorf("error setting update handler: %s", err)
 	}
 
+	var feedID string
 	setupErr = workflow.ExecuteActivity(ctx, acts.CreateFeed, args.FeedUrl).Get(ctx, &feedID)
 	if setupErr != nil {
 		l.Error("failed to create feed", "error", setupErr)
