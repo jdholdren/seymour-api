@@ -95,6 +95,16 @@ func (a activities) CreateFeed(ctx context.Context, feedURL string) (string, err
 	return feed.ID, nil
 }
 
+// CreateSubscription subscribes a user to a feed, returning the new subscription's ID.
+func (a activities) CreateSubscription(ctx context.Context, userID, feedID string) (string, error) {
+	id, err := a.timeline.CreateSubscription(ctx, userID, feedID)
+	if err != nil {
+		return "", fmt.Errorf("error creating subscription: %w", err)
+	}
+
+	return id, nil
+}
+
 func (a activities) RemoveFeed(ctx context.Context, feedID string) error {
 	if err := a.feeds.DeleteFeed(ctx, feedID); err != nil {
 		return fmt.Errorf("error deleting feed: %w", err)

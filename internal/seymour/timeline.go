@@ -10,7 +10,8 @@ import (
 // TimelineService provides data operations for the curated timeline and
 // the subscriptions that feed it.
 type TimelineService interface {
-	CreateSubscription(ctx context.Context, userID, feedID string) error
+	// CreateSubscription inserts a new subscription, returning its ID.
+	CreateSubscription(ctx context.Context, userID, feedID string) (string, error)
 	AllSubscriptions(ctx context.Context, userID string) ([]Subscription, error)
 	Subscription(ctx context.Context, id string) (Subscription, error)
 	DeleteSubscription(ctx context.Context, id string) error
