@@ -131,31 +131,31 @@ func (w workflows) CreateFeed(ctx workflow.Context, args createFeedArgs) (string
 	ctx = workflow.WithActivityOptions(ctx, options)
 
 	var (
-		feedID         string
-		subscriptionID string
-		createFeedDone bool
-		createFeedErr  error
+		feedID                 string
+		subscriptionID         string
+		createSubscriptionDone bool
+		setupErr               error
 	)
 	if err := workflow.SetUpdateHandler(ctx, createFeedUpdateName,
 		func(ctx workflow.Context) (string, error) {
-			workflow.Await(ctx, func() bool { return createFeedDone })
-			return subscriptionID, createFeedErr
+			workflow.Await(ctx, func() bool { return createSubscriptionDone })
+			return subscriptionID, setupErr
 		}); err != nil {
 		return "", fmt.Errorf("error setting update handler: %s", err)
 	}
 
-	createFeedErr = workflow.ExecuteActivity(ctx, acts.CreateFeed, args.FeedUrl).Get(ctx, &feedID)
-	if createFeedErr != nil {
-		l.Error("failed to create feed", "error", createFeedErr)
-		return "", createFeedErr
+	setupErr = workflow.ExecuteActivity(ctx, acts.CreateFeed, args.FeedUrl).Get(ctx, &feedID)
+	if setupErr != nil {
+		l.Error("failed to create feed", "error", setupErr)
+		return "", setupErr
 	}
 
-	createFeedErr = workflow.ExecuteActivity(ctx, acts.CreateSubscription, args.UserID, feedID).Get(ctx, &subscriptionID)
-	if createFeedErr != nil {
-		l.Error("failed to create subscription", "error", createFeedErr)
-		return "", createFeedErr
+	setupErr = workflow.ExecuteActivity(ctx, acts.CreateSubscription, args.UserID, feedID).Get(ctx, &subscriptionID)
+	if setupErr != nil {
+		l.Error("failed to create subscription", "error", setupErr)
+		return "", setupErr
 	}
-	createFeedDone = true // Signal update handler
+	createSubscriptionDone = true // Signal update handler
 
 	// Sync the feed
 	err := workflow.ExecuteActivity(ctx, acts.SyncFeed, feedID).Get(ctx, nil)
