@@ -1,7 +1,13 @@
-.PHONY: start yac up up-d build rb-api rb-worker gen-openapi
+.PHONY: start yac up up-d build rb-api rb-worker gen-openapi lint install-hooks
 
 test:
 	go test ./...
+
+lint:
+	golangci-lint run ./...
+
+install-hooks:
+	git config core.hooksPath .githooks
 
 gen-openapi:
 	go run ./cmd/genopenapi -out openapi.yaml
