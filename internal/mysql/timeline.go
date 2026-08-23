@@ -17,17 +17,15 @@ const (
 	timelineEntryNamespace = "tl-entry"
 )
 
-func (r Repo) CreateSubscription(ctx context.Context, userID, feedID string) error {
-	// MySQL has no INSERT OR IGNORE; INSERT IGNORE is the equivalent that
-	// silently skips the row on a unique-constraint violation.
-	const q = `INSERT IGNORE INTO subscriptions (id, user_id, feed_id) VALUES (?, ?, ?);`
+func (r Repo) CreateSubscription(ctx context.Context, userID, feedID string) (string, error) {
+	const q = `INSERT INTO subscriptions (id, user_id, feed_id) VALUES (?, ?, ?);`
 
 	id := fmt.Sprintf("%s-%s", uuid.New().String(), subscriptionNamespace)
 	if _, err := r.db.ExecContext(ctx, q, id, userID, feedID); err != nil {
-		return fmt.Errorf("error creating subscription: %w", err)
+		return "", fmt.Errorf("error creating subscription: %w", err)
 	}
 
-	return nil
+	return id, nil
 }
 
 func (r Repo) AllSubscriptions(ctx context.Context, userID string) ([]seymour.Subscription, error) {

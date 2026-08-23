@@ -17,7 +17,8 @@ func TestDeleteSubscription(t *testing.T) {
 	repo := testRepo(t)
 	ctx := t.Context()
 
-	require.NoError(t, repo.CreateSubscription(ctx, "user-1", "feed-1"))
+	_, err := repo.CreateSubscription(ctx, "user-1", "feed-1")
+	require.NoError(t, err)
 
 	subs, err := repo.AllSubscriptions(ctx, "user-1")
 	require.NoError(t, err)
@@ -34,8 +35,10 @@ func TestAllSubscriptions_ScopedByUser(t *testing.T) {
 	repo := testRepo(t)
 	ctx := t.Context()
 
-	require.NoError(t, repo.CreateSubscription(ctx, "user-1", "feed-1"))
-	require.NoError(t, repo.CreateSubscription(ctx, "user-2", "feed-1"))
+	_, err := repo.CreateSubscription(ctx, "user-1", "feed-1")
+	require.NoError(t, err)
+	_, err = repo.CreateSubscription(ctx, "user-2", "feed-1")
+	require.NoError(t, err)
 
 	subs, err := repo.AllSubscriptions(ctx, "user-1")
 	require.NoError(t, err)

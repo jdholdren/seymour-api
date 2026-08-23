@@ -25,30 +25,30 @@ func validatePostSubscriptionReq(req apiv1.PostSubscriptionReq) error {
 	return nil
 }
 
-func apiFeed(f seymour.Feed) apiv1.FeedResp {
+// apiSubscription converges a subscription with its feed into the response shape.
+func apiSubscription(sub seymour.Subscription, feed seymour.Feed) apiv1.SubscriptionResp {
 	var (
-		title      string
-		desc       string
-		lastSynced *time.Time
+		feedName        string
+		feedDescription string
+		lastSynced      *time.Time
 	)
-	if f.Title != nil {
-		title = *f.Title
+	if feed.Title != nil {
+		feedName = *feed.Title
 	}
-	if f.Description != nil {
-		desc = *f.Description
+	if feed.Description != nil {
+		feedDescription = *feed.Description
 	}
-	if f.LastSyncedAt != nil {
-		lastSynced = f.LastSyncedAt
+	if feed.LastSyncedAt != nil {
+		lastSynced = feed.LastSyncedAt
 	}
 
-	return apiv1.FeedResp{
-		ID:           f.ID,
-		Title:        title,
-		URL:          f.URL,
-		Description:  desc,
-		LastSyncedAt: lastSynced,
-		CreatedAt:    f.CreatedAt,
-		UpdatedAt:    f.UpdatedAt,
+	return apiv1.SubscriptionResp{
+		ID:              sub.ID,
+		FeedID:          sub.FeedID,
+		CreatedAt:       sub.CreatedAt,
+		FeedName:        feedName,
+		FeedDescription: feedDescription,
+		LastSynced:      lastSynced,
 	}
 }
 
@@ -69,7 +69,7 @@ func (s Server) postSusbcriptions(w http.ResponseWriter, r *http.Request) error 
 	}
 
 	// Start the workflow to create it and verify it
-	feedID, err := worker.TriggerCreateFeedWorkflow(ctx, s.tempCli, body.FeedURL)
+	subscriptionID, err := worker.SubscribeToFeed(ctx, s.tempCli, body.FeedURL, userID)
 	var seyErr *seymour.Error
 	if errors.As(err, &seyErr) {
 		return seyErr
@@ -77,17 +77,17 @@ func (s Server) postSusbcriptions(w http.ResponseWriter, r *http.Request) error 
 	if err != nil {
 		return err
 	}
-	feed, err := s.feeds.Feed(ctx, feedID)
+
+	subscription, err := s.timeline.Subscription(ctx, subscriptionID)
+	if err != nil {
+		return err
+	}
+	feed, err := s.feeds.Feed(ctx, subscription.FeedID)
 	if err != nil {
 		return err
 	}
 
-	// Add the feed to the subscriptions
-	if err := s.timeline.CreateSubscription(ctx, userID, feed.ID); err != nil {
-		return err
-	}
-
-	return writeJSON(w, http.StatusCreated, apiFeed(feed))
+	return writeJSON(w, http.StatusCreated, apiSubscription(subscription, feed))
 }
 
 func (s Server) getSusbcriptions(w http.ResponseWriter, r *http.Request) error {
@@ -113,29 +113,8 @@ func (s Server) getSusbcriptions(w http.ResponseWriter, r *http.Request) error {
 		if err != nil {
 			return err
 		}
-		var (
-			feedName        string
-			feedDescription string
-			lastSynced      *time.Time
-		)
-		if feed.Title != nil {
-			feedName = *feed.Title
-		}
-		if feed.Description != nil {
-			feedDescription = *feed.Description
-		}
-		if feed.LastSyncedAt != nil {
-			lastSynced = feed.LastSyncedAt
-		}
 
-		resp.Subscriptions = append(resp.Subscriptions, apiv1.SubscriptionResp{
-			ID:              sub.ID,
-			FeedID:          sub.FeedID,
-			CreatedAt:       sub.CreatedAt,
-			FeedName:        feedName,
-			FeedDescription: feedDescription,
-			LastSynced:      lastSynced,
-		})
+		resp.Subscriptions = append(resp.Subscriptions, apiSubscription(sub, feed))
 	}
 	return writeJSON(w, http.StatusCreated, resp)
 }

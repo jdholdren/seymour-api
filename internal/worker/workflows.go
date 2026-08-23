@@ -70,17 +70,33 @@ func (w workflows) SyncAllFeeds(ctx workflow.Context) error {
 	return nil
 }
 
-func TriggerCreateFeedWorkflow(ctx context.Context, c client.Client, feedURL string) (string, error) {
-	options := client.StartWorkflowOptions{
-		TaskQueue: TaskQueue,
-	}
-	we, err := c.ExecuteWorkflow(ctx, options, workflows{}.CreateFeed, feedURL)
+// SubscribeToFeed triggers a workflow that creates the feed and subscription.
+//
+// Returns the new subscription's ID early, after the feed and subscription have
+// been made, but before the feed is synced.
+func SubscribeToFeed(ctx context.Context, c client.Client, feedURL, userID string) (string, error) {
+	startOptions := c.NewWithStartWorkflowOperation(
+		client.StartWorkflowOptions{
+			TaskQueue: TaskQueue,
+		},
+		workflows{}.CreateFeed,
+		createFeedArgs{FeedUrl: feedURL, UserID: userID},
+	)
+	updateHandle, err := c.UpdateWithStartWorkflow(
+		ctx,
+		client.UpdateWithStartWorkflowOptions{
+			StartWorkflowOperation: startOptions,
+			UpdateOptions: client.UpdateWorkflowOptions{
+				UpdateName: createFeedUpdateName,
+			},
+		},
+	)
 	if err != nil {
 		return "", fmt.Errorf("unable to execute workflow: %s", err)
 	}
 
-	var feedID string
-	err = we.Get(context.Background(), &feedID)
+	var subscriptionID string
+	err = updateHandle.Get(context.Background(), &subscriptionID)
 	seyErr := &seymour.Error{}
 	if asSeyerr(err, &seyErr) {
 		return "", seyErr
@@ -89,13 +105,20 @@ func TriggerCreateFeedWorkflow(ctx context.Context, c client.Client, feedURL str
 		return "", fmt.Errorf("error executing workflow: %s", err)
 	}
 
-	return feedID, nil
+	return subscriptionID, nil
+}
+
+const createFeedUpdateName = "create_feed_update_creation"
+
+type createFeedArgs struct {
+	FeedUrl string
+	UserID  string
 }
 
 // CreateFeed inserts a new feed, tries to sync, and rolls back if it's unable to.
 //
 // Returns the ID of the created feed.
-func (w workflows) CreateFeed(ctx workflow.Context, feedURL string) (string, error) {
+func (w workflows) CreateFeed(ctx workflow.Context, args createFeedArgs) (string, error) {
 	options := workflow.ActivityOptions{
 		StartToCloseTimeout: 3 * time.Second,
 		RetryPolicy: &temporal.RetryPolicy{
@@ -104,15 +127,35 @@ func (w workflows) CreateFeed(ctx workflow.Context, feedURL string) (string, err
 			MaximumAttempts:    3,
 		},
 	}
-	ctx = workflow.WithActivityOptions(ctx, options)
 	l := workflow.GetLogger(ctx)
+	ctx = workflow.WithActivityOptions(ctx, options)
 
-	// Insert the feed
-	var feedID string
-	if err := workflow.ExecuteActivity(ctx, acts.CreateFeed, feedURL).Get(ctx, &feedID); err != nil {
-		l.Error("failed to create feed", "error", err)
-		return "", err
+	var (
+		feedID         string
+		subscriptionID string
+		createFeedDone bool
+		createFeedErr  error
+	)
+	if err := workflow.SetUpdateHandler(ctx, createFeedUpdateName,
+		func(ctx workflow.Context) (string, error) {
+			workflow.Await(ctx, func() bool { return createFeedDone })
+			return subscriptionID, createFeedErr
+		}); err != nil {
+		return "", fmt.Errorf("error setting update handler: %s", err)
 	}
+
+	createFeedErr = workflow.ExecuteActivity(ctx, acts.CreateFeed, args.FeedUrl).Get(ctx, &feedID)
+	if createFeedErr != nil {
+		l.Error("failed to create feed", "error", createFeedErr)
+		return "", createFeedErr
+	}
+
+	createFeedErr = workflow.ExecuteActivity(ctx, acts.CreateSubscription, args.UserID, feedID).Get(ctx, &subscriptionID)
+	if createFeedErr != nil {
+		l.Error("failed to create subscription", "error", createFeedErr)
+		return "", createFeedErr
+	}
+	createFeedDone = true // Signal update handler
 
 	// Sync the feed
 	err := workflow.ExecuteActivity(ctx, acts.SyncFeed, feedID).Get(ctx, nil)
@@ -130,11 +173,7 @@ func (w workflows) CreateFeed(ctx workflow.Context, feedURL string) (string, err
 
 	// Trigger a refresh of the timeline
 	ctx = workflow.WithChildOptions(ctx, workflow.ChildWorkflowOptions{
-		// Ensure only one judgement at a time, allow current one to process
-		WorkflowID:            "refresh-timeline",
-		WorkflowIDReusePolicy: enums.WORKFLOW_ID_REUSE_POLICY_TERMINATE_IF_RUNNING,
-		ParentClosePolicy:     enums.PARENT_CLOSE_POLICY_ABANDON,
-		TaskQueue:             TaskQueue,
+		TaskQueue: TaskQueue,
 	})
 	if err := workflow.ExecuteChildWorkflow(ctx, workflows.RefreshTimeline).GetChildWorkflowExecution().Get(ctx, nil); err != nil {
 		l.Error("failed to start child workflow", "error", err)

@@ -6,10 +6,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Seymour is an RSS feed aggregator with a curated timeline, moving from single-tenant to multi-tenant. Users subscribe to RSS feeds, and a Temporal worker syncs feeds, builds a timeline, then judges entries to decide what gets surfaced. The frontend is a separate project (expected at localhost:3000).
 
-A `UserService` (`internal/seymour/user.go`, implemented in `internal/mysql/users.go`) and GitHub OAuth login (`internal/api/oauth.go`) exist. `internal/api/auth.go`'s `requireAuth` middleware enforces the session cookie on every route except `/api/viewer` (which doubles as the "who am I" check), `/api/oauth-login/gh`, `/api/oauth-callback/gh`, and `/api/logout`. `subscriptions`/`timeline_entries` carry a `user_id`; `feeds`/`feed_entries` stay a shared global cache (deduped by URL) with no owner.
-
-The judging step is a seam: `activities.JudgeEntries` in `internal/worker/judge.go` currently approves every entry. Replace its body to introduce a real curation strategy — the surrounding workflow, batching, and persistence already exist.
-
 ## Common Commands
 
 - `make test` — Run all tests (`go test ./...`)
@@ -19,59 +15,24 @@ The judging step is a seam: `activities.JudgeEntries` in `internal/worker/judge.
 - `make rb-api` — Rebuild and restart only the API service
 - `make rb-worker` — Rebuild and restart only the worker service
 
-## Architecture
+## Directory
 
 Two binaries, both in `cmd/`:
 
 - **`cmd/api`** — REST API server (port 4444). HTTP handlers in `internal/api/`. Uses Gorilla Mux for routing.
 - **`cmd/worker`** — Temporal workflow worker. Workflows and activities in `internal/worker/`.
+- **`cmd/genopenapi`** — Generates the OpenAPI spec from `apis/v1`.
 
-### Core packages
+Packages:
 
-- **`internal/seymour`** — Domain models and the `Service` interfaces. DB types are defined and reused here across the app; timestamps are plain `time.Time` fields (the MySQL driver handles `DATETIME`/`TIMESTAMP` marshaling natively given the DSN option `parseTime=true`). Errors returned from any `Service` implementation should be a `*seymour.Error` (built via `seymour.E(...)`, or one of the sentinels like `seymour.ErrNotFound`/`seymour.ErrConflict`) whenever possible, rather than a plain `error`, so callers (`internal/api`, `internal/worker`) can rely on `errors.As` to recover the right HTTP status instead of falling back to a generic 500.
-- **`internal/mysql`** — MySQL implementation of `Service`'s. Uses `sqlx` + `squirrel` query builder. Pure-Go MySQL driver (no CGO): `github.com/go-sql-driver/mysql`.
+- **`internal/seymour`** — Domain models and the `Service` interfaces that the rest of the app codes against. See `.claude/rules/seymour-domain.md`.
+- **`internal/mysql`** — MySQL implementation of the `Service` interfaces. See `.claude/rules/mysql-conventions.md`.
 - **`internal/sync`** — RSS feed parsing and sync logic. Parses XML, sanitizes HTML, extracts feed metadata.
-- **`internal/worker`** — Temporal workflows and activities:
-  - `SyncAllFeeds` — Scheduled every 15 min, batches feeds in groups of 50
-  - `CreateFeed` — Creates feed, syncs, rolls back on failure
-  - `RefreshTimeline` — Inserts missing timeline entries, triggers judging
-  - `JudgeTimeline` — Approves/rejects entries via `JudgeEntries` (batches of `judgeBatchSize`, max 3 loops)
-- **`internal/migrations`** — Embedded SQL migration files, run via `golang-migrate`
-- **`apis/v1/date.go`** — `Date` represents a calendar day (no time-of-day), for API fields/params that are date blocks rather than instants (e.g. the timeline's `from`/`to` filters). Its zero value means "unset" (`IsZero()`), so prefer a plain `Date` over `*Date` in structs — don't reach for a pointer just to express absence.
-
-### Temporal patterns
-
-- Task queue name: `shared`
-- Singleton workflows use `WorkflowIDReusePolicy: TERMINATE_IF_RUNNING`
-- Schedules: `sync_all` and `refresh_timelines` both run every 15 minutes
-- Child workflows use `ParentClosePolicy: ABANDON` so they outlive parents
-
-### ID generation
-
-UUIDs with namespace suffixes: e.g. `{uuid}-fd` for feeds. See the `internal/mysql` package.
-
-### Database
-
-MySQL, connected via a DSN in the `DATABASE` env var (must include `parseTime=true`; e.g. `user:pass@tcp(mysql:3306)/seymour?parseTime=true&multiStatements=true`). Migrations are embedded Go files. Timeline entry statuses: `requires_judgement`, `approved`, `rejected`.
-
-## Environment Variables
-
-**API:** `DATABASE` (MySQL DSN), `TEMPORAL_HOST_PORT`, `PORT` (default 4444), `CORS`, `FRONTEND_URL` (browser is redirected here after GitHub OAuth completes), `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `GITHUB_REDIRECT_URL` (must match the GitHub OAuth app's configured callback URL), `SESSION_HASH_KEY`/`SESSION_BLOCK_KEY` (hex-encoded securecookie signing/encryption keys)
-**Worker:** `DATABASE`, `TEMPORAL_HOST_PORT`
-
-## API Endpoints
-
-All routes below except `/api/viewer`, `/api/oauth-login/gh`, `/api/oauth-callback/gh`, and `/api/logout` require a valid `session` cookie (enforced by `requireAuth` middleware in `internal/api/auth.go`).
-
-- `GET /api/viewer` — Viewer info; works logged-out too (returns empty subscriptions, no `user` field)
-- `POST /api/users/{userID}/subscriptions` — Subscribe to feed (triggers CreateFeed workflow). `{userID}` must match the session's user
-- `GET /api/users/{userID}/subscriptions` — List subscriptions for that user. `{userID}` must match the session's user
-- `DELETE /api/subscriptions/{subscriptionID}` — Delete a subscription; ownership is checked by fetching the subscription and comparing its `user_id` to the session
-- `GET /api/users/{userID}/timeline` — Paginated curated timeline for that user (supports `feed_id`, `status` — one of `requires_judgement`/`approved`/`rejected`, defaults to all — and `from`/`to` publish-date filters as `YYYY-MM-DD`, parsed via `apiv1.ParseDate`). `{userID}` must match the session's user
-- `GET /api/feed-entries/{feedEntryID}` — Full article content via go-readability; any authenticated user can read any entry (feeds/entries are a shared global cache, not user-owned)
-- `GET /api/oauth-login/gh` — Start GitHub OAuth login; redirects to GitHub. Accepts `?s=<path>` for where to send the browser (on `FRONTEND_URL`) after login succeeds, defaults to `/`
-- `GET /api/oauth-callback/gh` — GitHub OAuth callback; verifies state, ensures the user via `UserService`, sets the `session` cookie, redirects to `FRONTEND_URL` + the requested path
-- `POST /api/logout` — Clears the `session` cookie
+- **`internal/worker`** — Temporal workflows and activities, including feed sync, timeline refresh, and entry judging. See `.claude/rules/temporal-workflows.md`.
+- **`internal/api`** — HTTP handlers, auth middleware, OAuth. See `.claude/rules/api-endpoints.md`.
+- **`internal/migrations`** — Embedded SQL migration files, run via `golang-migrate`.
+- **`internal/logger`** — Shared logging setup.
+- **`apis/v1`** — Request/response types shared between `internal/api` and `cmd/genopenapi`. See `.claude/rules/api-endpoints.md`.
 
 ## Core Dev Loop
 
