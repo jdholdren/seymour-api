@@ -31,6 +31,32 @@ func TestDeleteSubscription(t *testing.T) {
 	assert.Empty(t, subs)
 }
 
+func TestEntriesNeedingJudgementOrderedAndScoped(t *testing.T) {
+	repo := testRepo(t)
+	ctx := t.Context()
+	// Explicit timestamps and IDs exercise both the primary order and tie-break.
+	_, err := testDB.ExecContext(ctx, `INSERT INTO timeline_entries
+		(id, user_id, feed_entry_id, feed_id, status, created_at) VALUES
+		('c', 'user-2', 'entry-c', 'feed', 'requires_judgement', '2026-01-02'),
+		('b', 'user-1', 'entry-b', 'feed', 'requires_judgement', '2026-01-01'),
+		('a', 'user-2', 'entry-a', 'feed', 'requires_judgement', '2026-01-01'),
+		('done', 'user-1', 'entry-d', 'feed', 'approved', '2025-01-01')`)
+	require.NoError(t, err)
+	entries, err := repo.EntriesNeedingJudgement(ctx, 2)
+	require.NoError(t, err)
+	require.Len(t, entries, 2)
+	assert.Equal(t, "a", entries[0].ID)
+	assert.Equal(t, "user-2", entries[0].UserID)
+	assert.Equal(t, "b", entries[1].ID)
+	assert.Equal(t, "user-1", entries[1].UserID)
+	require.NoError(t, repo.UpdateTimelineEntry(ctx, "a", seymour.TimelineEntryStatusApproved))
+	entries, err = repo.EntriesNeedingJudgement(ctx, 2)
+	require.NoError(t, err)
+	require.Len(t, entries, 2)
+	assert.Equal(t, "b", entries[0].ID)
+	assert.Equal(t, "c", entries[1].ID)
+}
+
 func TestAllSubscriptions_ScopedByUser(t *testing.T) {
 	repo := testRepo(t)
 	ctx := t.Context()

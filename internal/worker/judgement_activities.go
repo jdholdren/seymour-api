@@ -5,10 +5,29 @@ import (
 	"fmt"
 
 	"go.temporal.io/sdk/activity"
+
+	"github.com/jdholdren/seymour/internal/seymour"
 )
 
 // judgeBatchSize is how many entries a single judgement pass handles.
 const judgeBatchSize = 20
+
+// judgements maps timeline entry IDs to their approval decisions.
+type judgements map[string]bool
+
+// MarkEntriesAsJudged is safe to retry after partially persisting a batch.
+func (a activities) MarkEntriesAsJudged(ctx context.Context, js judgements) error {
+	for timelineEntryID, approved := range js {
+		status := seymour.TimelineEntryStatusRejected
+		if approved {
+			status = seymour.TimelineEntryStatusApproved
+		}
+		if err := a.timeline.UpdateTimelineEntry(ctx, timelineEntryID, status); err != nil {
+			return fmt.Errorf("error updating timeline entry status: %w", err)
+		}
+	}
+	return nil
+}
 
 // JudgeEntries fetches the entries in need of judgement and judges them.
 //
