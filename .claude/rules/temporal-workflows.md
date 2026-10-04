@@ -7,24 +7,32 @@ paths:
 # Temporal workflows
 
 - Task queue name: `shared`
-- Singleton workflows use `WorkflowIDReusePolicy: TERMINATE_IF_RUNNING`
-- Child workflows use `ParentClosePolicy: ABANDON` so they outlive parents
-- Schedules: `sync_all` and `refresh_timelines` both run every 15 minutes
+- Judgement has one scheduled drainer; overlap policy is `SKIP`, never terminate
+  an active judgement to start another. Do not start additional manual drainers.
+- Schedules: `sync_all` and `refresh_timelines` run every 15 minutes;
+  `judge_timeline` runs every minute. Definitions live in `schedules.go`.
 
 ## Workflows
 
 - `SyncAllFeeds` — batches feeds in groups of 50
 - `CreateFeed` — creates feed, syncs, rolls back on failure
-- `RefreshTimeline` — inserts missing timeline entries, triggers judging
-- `JudgeTimeline` — approves/rejects entries via `JudgeEntries` (batches of
-  `judgeBatchSize`, max 3 loops)
+- `RefreshTimeline` — inserts missing timeline entries independently of judging
+- `JudgeTimeline` — drains pending entries in batches of `judgeBatchSize`,
+  persisting each batch before fetching the next. Continues-As-New after 100
+  persisted batches to bound history.
 
 ## The judging seam
 
-`activities.JudgeEntries` in `judge.go` currently approves every entry.
+`activities.JudgeEntries` in `judgement_activities.go` currently approves every entry.
 It's the intended seam for a real curation strategy — the surrounding
 workflow, batching, and persistence already exist, so a real implementation
-only needs to replace that function's body.
+can replace that function's body. Keep judging and persistence as separate
+activities: Temporal records decisions so transient DB failures retry persistence
+without repeating the judge. Persistence retries for up to 24 hours; if the
+workflow ultimately fails, a later scheduled run may rejudge pending entries.
+
+This change has no legacy workflow replay path. Finish existing `JudgeTimeline`
+and `RefreshTimeline` executions on the old worker before deploying it.
 
 ## Env vars
 

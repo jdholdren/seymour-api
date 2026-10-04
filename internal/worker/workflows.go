@@ -3,7 +3,6 @@ package worker
 import (
 	"context"
 	"fmt"
-	"math"
 	"time"
 
 	"go.temporal.io/api/enums/v1"
@@ -190,8 +189,7 @@ func (w workflows) CreateFeed(ctx workflow.Context, args createFeedArgs) (feedID
 	}
 	setupDone = true // Signal update handler with the real subscription ID
 
-	// Trigger a refresh of the timeline, and wait for it (and the judging it
-	// kicks off) to finish.
+	// Wait for timeline materialization. Judgement runs independently.
 	ctx = workflow.WithChildOptions(ctx, workflow.ChildWorkflowOptions{
 		TaskQueue: TaskQueue,
 	})
@@ -203,8 +201,7 @@ func (w workflows) CreateFeed(ctx workflow.Context, args createFeedArgs) (feedID
 	return subscriptionID, nil
 }
 
-// RefreshTimeline syncs any missing entries based on
-// subscriptions, and then judges the timeline.
+// RefreshTimeline materializes missing entries based on subscriptions.
 func (w workflows) RefreshTimeline(ctx workflow.Context) error {
 	options := workflow.ActivityOptions{
 		StartToCloseTimeout: 3 * time.Second,
@@ -217,93 +214,9 @@ func (w workflows) RefreshTimeline(ctx workflow.Context) error {
 	ctx = workflow.WithActivityOptions(ctx, options)
 	l := workflow.GetLogger(ctx)
 
-	var missingEntryCount int
-	if err := workflow.ExecuteActivity(ctx, acts.InsertMissingTimelineEntries).Get(ctx, &missingEntryCount); err != nil {
+	if err := workflow.ExecuteActivity(ctx, acts.InsertMissingTimelineEntries).Get(ctx, nil); err != nil {
 		l.Error("failed to insert missing timeline entries", "error", err)
 		return err
-	}
-
-	// If no entries added, just exit early
-	l.Debug("no entries added, return early")
-	if missingEntryCount == 0 {
-		return nil
-	}
-
-	// Start child workflow to judge the timeline
-	ctx = workflow.WithChildOptions(ctx, workflow.ChildWorkflowOptions{
-		// Ensure only one judgement at a time, allow current one to process.
-		// TERMINATE_IF_RUNNING is deprecated in favor of pairing ALLOW_DUPLICATE
-		// with WorkflowIDConflictPolicy: TERMINATE_EXISTING, but that conflict
-		// policy field only exists on top-level StartWorkflowOptions, not
-		// ChildWorkflowOptions, so this is still the only way to dedupe a
-		// child workflow by ID.
-		WorkflowID:            "judge-timeline",
-		WorkflowIDReusePolicy: enums.WORKFLOW_ID_REUSE_POLICY_TERMINATE_IF_RUNNING, //nolint:staticcheck
-		ParentClosePolicy:     enums.PARENT_CLOSE_POLICY_ABANDON,
-		TaskQueue:             TaskQueue,
-	})
-	if err := workflow.ExecuteChildWorkflow(ctx, workflows.JudgeTimeline).GetChildWorkflowExecution().Get(ctx, nil); err != nil {
-		l.Error("failed to start child workflow", "error", err)
-		return err
-	}
-
-	return nil
-}
-
-func (w workflows) JudgeTimeline(ctx workflow.Context) error {
-	options := workflow.ActivityOptions{
-		StartToCloseTimeout: 30 * time.Second,
-		RetryPolicy: &temporal.RetryPolicy{
-			InitialInterval:        time.Minute,
-			BackoffCoefficient:     2.0,
-			MaximumAttempts:        3,
-			NonRetryableErrorTypes: []string{errTypeInternal},
-		},
-	}
-	ctx = workflow.WithActivityOptions(ctx, options)
-	l := workflow.GetLogger(ctx)
-
-	// Timeline might have a bunch of entries, we may need to loop more than once
-	var entryCount uint
-	if err := workflow.ExecuteActivity(ctx, acts.CountEntriesNeedingJudgement).Get(ctx, &entryCount); err != nil {
-		l.Error("failed to count entries", "error", err)
-		return err
-	}
-
-	// If there are no entries to judge, exit early
-	if entryCount == 0 {
-		l.Info("no entries to judge")
-		return nil
-	}
-
-	// Loop at most 3 times based on how many entries a judgement pass handles
-	loops := int(math.Min(3, float64(entryCount/judgeBatchSize)+1))
-
-	for range loops {
-		// Judge entries
-		var (
-			judgeOptions = workflow.ActivityOptions{
-				StartToCloseTimeout: 30 * time.Second,
-				RetryPolicy: &temporal.RetryPolicy{
-					InitialInterval:        time.Minute,
-					BackoffCoefficient:     2.0,
-					MaximumAttempts:        3,
-					NonRetryableErrorTypes: []string{errTypeInternal},
-				},
-			}
-			judgeCtx = workflow.WithActivityOptions(ctx, judgeOptions)
-			j        judgements
-		)
-		if err := workflow.ExecuteActivity(judgeCtx, acts.JudgeEntries).Get(ctx, &j); err != nil {
-			l.Error("failed to judge entries", "error", err)
-			return err
-		}
-
-		// Save the judgements
-		if err := workflow.ExecuteActivity(ctx, acts.MarkEntriesAsJudged, j).Get(ctx, nil); err != nil {
-			l.Error("failed to save judgements", "error", err)
-			return err
-		}
 	}
 
 	return nil

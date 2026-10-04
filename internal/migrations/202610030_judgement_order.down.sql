@@ -1,0 +1,1 @@
+DROP INDEX idx_timeline_entries_pending_order ON timeline_entries;

@@ -141,34 +141,6 @@ func (a activities) InsertMissingTimelineEntries(ctx context.Context) (int, erro
 	return len(missing), nil
 }
 
-// CountEntriesNeedingJudgement checks the current count of how many entries need judgement.
-func (a activities) CountEntriesNeedingJudgement(ctx context.Context) (uint, error) {
-	entries, err := a.timeline.EntriesNeedingJudgement(ctx, 1000)
-	if err != nil {
-		return 0, fmt.Errorf("error finding entries needing judgement: %s", err)
-	}
-
-	return uint(len(entries)), nil
-}
-
-// Type that holds a timeline entry ID and whether it has been approved.
-type judgements map[string]bool
-
-func (a activities) MarkEntriesAsJudged(ctx context.Context, js judgements) error {
-	for timelineEntryID, approved := range js {
-		status := seymour.TimelineEntryStatusRejected
-		if approved {
-			status = seymour.TimelineEntryStatusApproved
-		}
-
-		if err := a.timeline.UpdateTimelineEntry(ctx, timelineEntryID, status); err != nil {
-			return fmt.Errorf("error updating timeline entry status: %w", err)
-		}
-	}
-
-	return nil
-}
-
 // AllUserIDs is no longer needed in single-tenant mode, return empty slice
 func (a activities) AllUserIDs(ctx context.Context) ([]string, error) {
 	return []string{}, nil

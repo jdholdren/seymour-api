@@ -122,6 +122,7 @@ func (r Repo) EntriesNeedingJudgement(ctx context.Context, limit uint) ([]seymou
 	const q = `
 	SELECT
 		id,
+		user_id,
 		feed_entry_id,
 		created_at,
 		status,
@@ -130,6 +131,7 @@ func (r Repo) EntriesNeedingJudgement(ctx context.Context, limit uint) ([]seymou
 		timeline_entries
 	WHERE
 		status = ?
+	ORDER BY created_at, id
 	LIMIT ?;
 	`
 
