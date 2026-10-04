@@ -3,8 +3,8 @@
 - Task queue name: `shared`
 - Judgement has one scheduled drainer; overlap policy is `SKIP`, never terminate
   an active judgement to start another. Do not start additional manual drainers.
-- Schedules: `sync_all` and `refresh_timelines` run every 15 minutes;
-  `judge_timeline` runs every minute. Definitions live in `schedules.go`.
+- Schedules: `sync_all`, `refresh_timelines`, and `judge_timeline` run every
+  15 minutes. Definitions live in `schedules.go`.
 
 ## Workflows
 

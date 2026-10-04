@@ -24,11 +24,11 @@ the workflow's batch and persistence boundaries explicit.
 ## Scheduling and overlap
 
 Worker startup reconciles a Temporal schedule with ID `judge_timeline`. It
-starts `JudgeTimeline` every minute on the `shared` task queue and uses the
+starts `JudgeTimeline` every 15 minutes on the `shared` task queue and uses the
 `SKIP` overlap policy. A scheduled run that finds no work exits. Timeline
 refreshes only insert missing entries; they do not start, cancel, or wait for a
 judgement run. Thus entries created after a drainer has finished are picked up
-by the next scheduled run (normally within about a minute).
+by the next scheduled run (normally within about 15 minutes).
 
 Keep one scheduled drainer. Do not start manual concurrent drainers: selection
 does not claim or lock rows, so concurrent runs could judge the same entries.

@@ -79,7 +79,7 @@ const judgementScheduleID = "judge_timeline"
 
 func ensureJudgementSchedule(ctx context.Context, schedules client.ScheduleClient) error {
 	spec := client.ScheduleSpec{
-		Intervals: []client.ScheduleIntervalSpec{{Every: time.Minute}},
+		Intervals: []client.ScheduleIntervalSpec{{Every: 15 * time.Minute}},
 	}
 	action := &client.ScheduleWorkflowAction{
 		ID:        judgementScheduleID,
