@@ -1,9 +1,3 @@
----
-paths:
-  - "internal/mysql/**"
-  - "internal/migrations/**"
----
-
 # MySQL package conventions
 
 - `sqlx` + `squirrel` query builder. Pure-Go driver (no CGO):

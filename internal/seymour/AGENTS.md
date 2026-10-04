@@ -1,8 +1,3 @@
----
-paths:
-  - "internal/seymour/**"
----
-
 # `internal/seymour` conventions
 
 - This package defines the domain models and `Service` interfaces; DB types
