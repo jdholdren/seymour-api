@@ -1,6 +1,12 @@
-# CLAUDE.md
+# AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to coding agents when working with code in this repository.
+
+## Path-specific instructions
+
+Follow the nested `AGENTS.md` files for the packages listed below.
+When editing API handlers or response-building helpers, follow
+`internal/api/AGENTS.md`, including its response shape checks.
 
 ## What is Seymour?
 
@@ -20,19 +26,19 @@ Seymour is an RSS feed aggregator with a curated timeline, moving from single-te
 Two binaries, both in `cmd/`:
 
 - **`cmd/api`** — REST API server (port 4444). HTTP handlers in `internal/api/`. Uses Gorilla Mux for routing.
-- **`cmd/worker`** — Temporal workflow worker. Workflows and activities in `internal/worker/`.
+- **`cmd/worker`** — Temporal workflow worker. Workflows and activities in `internal/worker/`. Read `internal/worker/AGENTS.md` for shared worker conventions.
 - **`cmd/genopenapi`** — Generates the OpenAPI spec from `apis/v1`.
 
 Packages:
 
-- **`internal/seymour`** — Domain models and the `Service` interfaces that the rest of the app codes against. See `.claude/rules/seymour-domain.md`.
-- **`internal/mysql`** — MySQL implementation of the `Service` interfaces. See `.claude/rules/mysql-conventions.md`.
+- **`internal/seymour`** — Domain models and the `Service` interfaces that the rest of the app codes against. See `internal/seymour/AGENTS.md`.
+- **`internal/mysql`** — MySQL implementation of the `Service` interfaces. See `internal/mysql/AGENTS.md`.
 - **`internal/sync`** — RSS feed parsing and sync logic. Parses XML, sanitizes HTML, extracts feed metadata.
-- **`internal/worker`** — Temporal workflows and activities, including feed sync, timeline refresh, and entry judging. See `.claude/rules/temporal-workflows.md`.
-- **`internal/api`** — HTTP handlers, auth middleware, OAuth. See `.claude/rules/api-endpoints.md`.
-- **`internal/migrations`** — Embedded SQL migration files, run via `golang-migrate`.
+- **`internal/worker`** — Temporal workflows and activities, including feed sync, timeline refresh, and entry judging. See `internal/worker/AGENTS.md`.
+- **`internal/api`** — HTTP handlers, auth middleware, OAuth. See `internal/api/AGENTS.md`.
+- **`internal/migrations`** — Embedded SQL migration files, run via `golang-migrate`. Read `internal/mysql/AGENTS.md` for shared database conventions.
 - **`internal/logger`** — Shared logging setup.
-- **`apis/v1`** — Request/response types shared between `internal/api` and `cmd/genopenapi`. See `.claude/rules/api-endpoints.md`.
+- **`apis/v1`** — Request/response types shared between `internal/api` and `cmd/genopenapi`. Read `internal/api/AGENTS.md` for shared API conventions.
 
 ## Core Dev Loop
 

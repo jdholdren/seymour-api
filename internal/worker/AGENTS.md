@@ -1,9 +1,3 @@
----
-paths:
-  - "internal/worker/**"
-  - "cmd/worker/**"
----
-
 # Temporal workflows
 
 - Task queue name: `shared`
