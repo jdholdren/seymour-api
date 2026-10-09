@@ -9,3 +9,6 @@
   `seymour.ErrNotFound`/`seymour.ErrConflict`) rather than a plain `error`,
   so callers (`internal/api`, `internal/worker`) can use `errors.As` to
   recover the right HTTP status instead of falling back to a generic 500.
+- Generate interface mocks in `internal/mock` with `go generate ./internal/seymour`.
+  Use the registered `mockgen` Go tool; when adding an interface, include it in
+  the generation directive in `seymour.go`.

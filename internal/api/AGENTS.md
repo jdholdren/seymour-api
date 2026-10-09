@@ -31,7 +31,7 @@ just to express absence.
 - `GET /api/users/{userID}/timeline-prompt` — Get the user's timeline prompt
   (unset is returned as an empty string); `{userID}` must match the session
 - `PUT /api/users/{userID}/timeline-prompt` — Set the user's timeline prompt;
-  `prompt` is limited to 16 KiB of decoded UTF-8 bytes. An empty, omitted, or
+  `prompt` is limited to 1000 Unicode characters. An empty, omitted, or
   null prompt clears it. `{userID}` must match the session
 - `GET /api/feed-entries/{feedEntryID}` — Full article content via
   go-readability; any authenticated user can read any entry (feeds/entries
@@ -52,6 +52,16 @@ just to express absence.
 match the GitHub OAuth app's configured callback URL),
 `SESSION_HASH_KEY`/`SESSION_BLOCK_KEY` (hex-encoded securecookie
 signing/encryption keys)
+
+## Handler tests
+
+Test handlers directly with `httptest` requests and response recorders rather
+than constructing the full server/router. Set the authenticated user ID in the
+request context (`userIDCtxKey`) and path parameters with `mux.SetURLVars`.
+Check returned handler errors directly; cookie decoding and authentication
+middleware belong in their own tests, not handler tests.
+Use Uber gomock with the generated services in `internal/mock`, rather than
+hand-written service mocks. Keep cases focused on a single handler call.
 
 ## Response shape checks
 

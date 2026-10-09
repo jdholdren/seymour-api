@@ -221,8 +221,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/V1TimelinePromptResp'
           description: OK
-      summary: Replace the user's timeline filtering prompt (maximum 16 KiB UTF-8
-        bytes); an empty string clears it. Requires authentication and ownership.
+      summary: Replace the user's timeline filtering prompt (maximum 1000 Unicode
+        characters); an empty string clears it. Requires authentication and ownership.
         Does not reprocess the timeline.
       tags:
       - timeline-prompt
@@ -297,8 +297,9 @@ components:
     V1PutTimelinePromptReq:
       properties:
         prompt:
-          description: Timeline filtering prompt, at most 16 KiB of decoded UTF-8
-            bytes. An empty, omitted, or null prompt clears it.
+          description: Timeline filtering prompt, at most 1000 Unicode characters.
+            An empty, omitted, or null prompt clears it.
+          maxLength: 1000
           type: string
       type: object
     V1SubscriptionListResp:

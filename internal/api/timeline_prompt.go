@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"unicode/utf8"
 
 	"github.com/gorilla/mux"
 
@@ -11,11 +12,15 @@ import (
 	"github.com/jdholdren/seymour/internal/seymour"
 )
 
-const maxTimelinePromptBytes = 16 * 1024
+const maxTimelinePromptCharacters = 1000
 
 func (s Server) getTimelinePrompt(w http.ResponseWriter, r *http.Request) error {
 	userID := mux.Vars(r)["userID"]
-	if userID != ctxUserID(r.Context()) {
+	contextUserID := ctxUserID(r.Context())
+	if contextUserID == "" {
+		return seymour.E("unauthorized", http.StatusUnauthorized)
+	}
+	if userID != contextUserID {
 		return seymour.E("forbidden", http.StatusForbidden)
 	}
 
@@ -34,7 +39,11 @@ func (s Server) getTimelinePrompt(w http.ResponseWriter, r *http.Request) error 
 
 func (s Server) putTimelinePrompt(w http.ResponseWriter, r *http.Request) error {
 	userID := mux.Vars(r)["userID"]
-	if userID != ctxUserID(r.Context()) {
+	contextUserID := ctxUserID(r.Context())
+	if contextUserID == "" {
+		return seymour.E("unauthorized", http.StatusUnauthorized)
+	}
+	if userID != contextUserID {
 		return seymour.E("forbidden", http.StatusForbidden)
 	}
 
@@ -49,8 +58,8 @@ func (s Server) putTimelinePrompt(w http.ResponseWriter, r *http.Request) error 
 		return seymour.E("invalid request body", http.StatusBadRequest)
 	}
 
-	if len(req.Prompt) > maxTimelinePromptBytes {
-		return seymour.E("prompt exceeds 16 KiB UTF-8 byte limit", http.StatusBadRequest)
+	if utf8.RuneCountInString(req.Prompt) > maxTimelinePromptCharacters {
+		return seymour.E("prompt exceeds 1000 character limit", http.StatusBadRequest)
 	}
 
 	if err := s.users.UpdateUser(r.Context(), userID, seymour.UpdateUserArgs{TimelinePrompt: &req.Prompt}); err != nil {
