@@ -33,6 +33,32 @@ func (r Repo) User(ctx context.Context, id string) (seymour.User, error) {
 	return user, nil
 }
 
+func (r Repo) SetTimelinePrompt(ctx context.Context, userID, prompt string) error {
+	var value any = prompt
+	if prompt == "" {
+		value = nil
+	}
+	const q = `UPDATE users SET timeline_prompt = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?;`
+	result, err := r.db.ExecContext(ctx, q, value, userID)
+	if err != nil {
+		return seymour.E(fmt.Errorf("error setting timeline prompt: %w", err))
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return seymour.E(fmt.Errorf("error checking timeline prompt update: %w", err))
+	}
+	if rows == 0 {
+		var exists bool
+		if err := r.db.GetContext(ctx, &exists, `SELECT EXISTS(SELECT 1 FROM users WHERE id = ?);`, userID); err != nil {
+			return seymour.E(fmt.Errorf("error checking user existence: %w", err))
+		}
+		if !exists {
+			return seymour.ErrNotFound
+		}
+	}
+	return nil
+}
+
 // userLoginByIdp fetches a user and their login by idp/idp id using the given queryer,
 // so it can be reused both inside and outside of a transaction.
 func userLoginByIdp(ctx context.Context, q sqlx.QueryerContext, idp seymour.Idp, idpID string) (seymour.User, seymour.UserLogin, error) {

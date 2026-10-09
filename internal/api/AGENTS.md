@@ -28,6 +28,11 @@ just to express absence.
   `requires_judgement`/`approved`/`rejected`, defaults to all — and
   `from`/`to` publish-date filters as `YYYY-MM-DD`, parsed via
   `apiv1.ParseDate`). `{userID}` must match the session's user
+- `GET /api/users/{userID}/timeline-prompt` — Get the user's timeline prompt
+  (unset is returned as an empty string); `{userID}` must match the session
+- `PUT /api/users/{userID}/timeline-prompt` — Set the user's timeline prompt;
+  `prompt` is required, limited to 16 KiB of decoded UTF-8 bytes, and an empty
+  string clears it. `{userID}` must match the session
 - `GET /api/feed-entries/{feedEntryID}` — Full article content via
   go-readability; any authenticated user can read any entry (feeds/entries
   are a shared global cache, not user-owned)

@@ -10,10 +10,11 @@ import (
 // It has possibly many UserLogins that tie it to multiple ways of signing in,
 // although we only support github for now.
 type User struct {
-	ID            string    `db:"id"`
-	PreferredName *string   `db:"preferred_name"`
-	CreatedAt     time.Time `db:"created_at"`
-	UpdatedAt     time.Time `db:"updated_at"`
+	ID             string    `db:"id"`
+	PreferredName  *string   `db:"preferred_name"`
+	TimelinePrompt *string   `db:"timeline_prompt"`
+	CreatedAt      time.Time `db:"created_at"`
+	UpdatedAt      time.Time `db:"updated_at"`
 }
 
 // Idp is an enum of the supported identity providers for login.
@@ -38,4 +39,6 @@ type UserService interface {
 	// If the user login is already found, the found login is just returned with the user (no modification).
 	// Otherwise, both are created and returned.
 	EnsureUser(ctx context.Context, idp Idp, id string) (User, UserLogin, error)
+	// Sets a user's timeline prompt. An empty prompt clears it.
+	SetTimelinePrompt(ctx context.Context, userID, prompt string) error
 }

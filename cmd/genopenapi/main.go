@@ -35,6 +35,10 @@ type (
 		FeedEntryID string `path:"feedEntryID"`
 	}
 
+	userPath struct {
+		UserID string `path:"userID" description:"Must match the authenticated session's user ID."`
+	}
+
 	oauthLoginQuery struct {
 		RedirectPath string `query:"s" description:"Path on FRONTEND_URL to send the browser to after login. Defaults to /."`
 	}
@@ -90,6 +94,16 @@ func main() {
 			method: http.MethodGet, path: "/api/timeline", id: "getTimeline", tag: "timeline",
 			summary:   "Get the paginated, curated timeline, optionally filtered by status and publish date.",
 			reqParams: timelineQuery{}, resp: apiv1.TimelineResp{}, status: http.StatusOK,
+		},
+		{
+			method: http.MethodGet, path: "/api/users/{userID}/timeline-prompt", id: "getTimelinePrompt", tag: "timeline-prompt",
+			summary:   "Get the user's timeline filtering prompt; returns an empty string when unset. Requires authentication and ownership.",
+			reqParams: userPath{}, resp: apiv1.TimelinePromptResp{}, status: http.StatusOK,
+		},
+		{
+			method: http.MethodPut, path: "/api/users/{userID}/timeline-prompt", id: "setTimelinePrompt", tag: "timeline-prompt",
+			summary:   "Replace the user's timeline filtering prompt (maximum 16 KiB UTF-8 bytes); an empty string clears it. Requires authentication and ownership. Does not reprocess the timeline.",
+			reqParams: userPath{}, reqBody: apiv1.PutTimelinePromptReq{}, resp: apiv1.TimelinePromptResp{}, status: http.StatusOK,
 		},
 		{
 			method: http.MethodGet, path: "/api/feed-entries/{feedEntryID}", id: "getFeedEntry", tag: "feed-entries",
