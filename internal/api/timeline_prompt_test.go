@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"database/sql"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -68,7 +69,7 @@ func TestGetTimelinePromptReturnsEmptyStringWhenUnset(t *testing.T) {
 func TestPutTimelinePromptUpdatesPromptWithoutChangingText(t *testing.T) {
 	prompt, body := "  first line\n雪 ☃  \nsecond line ", `{"prompt":"  first line\n雪 ☃  \nsecond line "}`
 	rig := newRig(t)
-	rig.users.EXPECT().UpdateUser(gomock.Any(), "alice", seymour.UpdateUserArgs{TimelinePrompt: &prompt}).Return(nil)
+	rig.users.EXPECT().UpdateUser(gomock.Any(), "alice", seymour.UpdateUserArgs{TimelinePrompt: &sql.NullString{String: prompt, Valid: true}}).Return(nil)
 
 	r := httptest.NewRequestWithContext(context.WithValue(t.Context(), userIDCtxKey, "alice"), http.MethodPut, "/api/users/alice/timeline-prompt", strings.NewReader(body))
 	r = mux.SetURLVars(r, map[string]string{"userID": "alice"})
@@ -81,10 +82,9 @@ func TestPutTimelinePromptUpdatesPromptWithoutChangingText(t *testing.T) {
 }
 
 func TestPutTimelinePromptClearsPromptWhenEmpty(t *testing.T) {
-	prompt := ""
 	body := `{"prompt":""}`
 	rig := newRig(t)
-	rig.users.EXPECT().UpdateUser(gomock.Any(), "alice", seymour.UpdateUserArgs{TimelinePrompt: &prompt}).Return(nil)
+	rig.users.EXPECT().UpdateUser(gomock.Any(), "alice", seymour.UpdateUserArgs{TimelinePrompt: &sql.NullString{}}).Return(nil)
 
 	r := httptest.NewRequestWithContext(context.WithValue(t.Context(), userIDCtxKey, "alice"), http.MethodPut, "/api/users/alice/timeline-prompt", strings.NewReader(body))
 	r = mux.SetURLVars(r, map[string]string{"userID": "alice"})
@@ -100,7 +100,7 @@ func TestPutTimelinePromptAccepts1000UnicodeCharacters(t *testing.T) {
 	prompt := strings.Repeat("é", 1000)
 	body := `{"prompt":"` + prompt + `"}`
 	rig := newRig(t)
-	rig.users.EXPECT().UpdateUser(gomock.Any(), "alice", seymour.UpdateUserArgs{TimelinePrompt: &prompt}).Return(nil)
+	rig.users.EXPECT().UpdateUser(gomock.Any(), "alice", seymour.UpdateUserArgs{TimelinePrompt: &sql.NullString{String: prompt, Valid: true}}).Return(nil)
 
 	r := httptest.NewRequestWithContext(context.WithValue(t.Context(), userIDCtxKey, "alice"), http.MethodPut, "/api/users/alice/timeline-prompt", strings.NewReader(body))
 	r = mux.SetURLVars(r, map[string]string{"userID": "alice"})

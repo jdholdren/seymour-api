@@ -18,6 +18,9 @@ Prefer paragraphing: use blank lines to group related blocks of logic and
 separate distinct steps, such as validation, data access, and response building.
 Keep closely related statements together rather than separating every statement.
 Apply the same grouping to test setup, actions, and assertions.
+Each test paragraph must have a short comment describing its scenario, the
+behavior under test, or the expected result. Prefer behavior-specific comments
+over generic labels such as "Setup", "Act", or "Assert".
 
 ## Common Commands
 

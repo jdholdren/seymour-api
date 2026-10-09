@@ -53,7 +53,7 @@ func runTests(m *testing.M) (int, error) {
 	// parseTime=true is required so the MySQL driver scans DATETIME/TIMESTAMP
 	// columns directly into time.Time; without it the driver hands back a
 	// []byte instead.
-	connStr, err := container.ConnectionString(ctx, "parseTime=true", "multiStatements=true")
+	connStr, err := container.ConnectionString(ctx, "parseTime=true", "multiStatements=true", "clientFoundRows=true")
 	if err != nil {
 		return 0, fmt.Errorf("error building mysql connection string: %w", err)
 	}
