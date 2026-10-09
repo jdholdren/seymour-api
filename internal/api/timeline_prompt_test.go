@@ -59,8 +59,6 @@ func TestPutTimelinePrompt(t *testing.T) {
 	}{
 		{name: "ordinary prompt", body: `{"prompt":"  keep spacing\n雪 ☃  "}`, prompt: "  keep spacing\n雪 ☃  "},
 		{name: "empty string clears", body: `{"prompt":""}`},
-		{name: "omitted prompt clears", body: `{}`},
-		{name: "null prompt clears", body: `{"prompt":null}`},
 		{name: "1000 Unicode characters accepted", body: `{"prompt":"` + strings.Repeat("é", 1000) + `"}`, prompt: strings.Repeat("é", 1000)},
 	}
 
@@ -90,9 +88,6 @@ func TestTimelinePromptValidation(t *testing.T) {
 		name string
 		body string
 	}{
-		{name: "malformed JSON", body: `{"prompt":`},
-		{name: "non-string prompt", body: `{"prompt":123}`},
-		{name: "trailing JSON", body: `{"prompt":"ok"} {}`},
 		{name: "over 1000 ASCII characters", body: `{"prompt":"` + strings.Repeat("a", 1001) + `"}`},
 		{name: "over 1000 Unicode characters", body: `{"prompt":"` + strings.Repeat("界", 1001) + `"}`},
 	}

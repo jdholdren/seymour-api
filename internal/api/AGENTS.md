@@ -62,6 +62,8 @@ Check returned handler errors directly; cookie decoding and authentication
 middleware belong in their own tests, not handler tests.
 Use Uber gomock with the generated services in `internal/mock`, rather than
 hand-written service mocks. Keep cases focused on a single handler call.
+Test application behavior (validation limits, service arguments, responses, and
+ownership), not JSON decoding or other behavior already provided by libraries.
 
 ## Response shape checks
 
