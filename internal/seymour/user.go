@@ -17,6 +17,12 @@ type User struct {
 	UpdatedAt      time.Time `db:"updated_at"`
 }
 
+// UpdateUserArgs contains the user fields to update. Nil fields are left unchanged.
+type UpdateUserArgs struct {
+	PreferredName  *string
+	TimelinePrompt *string
+}
+
 // Idp is an enum of the supported identity providers for login.
 type Idp string
 
@@ -39,6 +45,6 @@ type UserService interface {
 	// If the user login is already found, the found login is just returned with the user (no modification).
 	// Otherwise, both are created and returned.
 	EnsureUser(ctx context.Context, idp Idp, id string) (User, UserLogin, error)
-	// Sets a user's timeline prompt. An empty prompt clears it.
-	SetTimelinePrompt(ctx context.Context, userID, prompt string) error
+	// Updates the supplied user fields. Empty nullable values clear the field.
+	UpdateUser(ctx context.Context, id string, args UpdateUserArgs) error
 }

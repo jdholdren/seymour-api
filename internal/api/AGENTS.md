@@ -31,8 +31,8 @@ just to express absence.
 - `GET /api/users/{userID}/timeline-prompt` — Get the user's timeline prompt
   (unset is returned as an empty string); `{userID}` must match the session
 - `PUT /api/users/{userID}/timeline-prompt` — Set the user's timeline prompt;
-  `prompt` is required, limited to 16 KiB of decoded UTF-8 bytes, and an empty
-  string clears it. `{userID}` must match the session
+  `prompt` is limited to 16 KiB of decoded UTF-8 bytes. An empty, omitted, or
+  null prompt clears it. `{userID}` must match the session
 - `GET /api/feed-entries/{feedEntryID}` — Full article content via
   go-readability; any authenticated user can read any entry (feeds/entries
   are a shared global cache, not user-owned)
