@@ -177,6 +177,55 @@ paths:
         and publish date.
       tags:
       - timeline
+  /api/users/{userID}/timeline-prompt:
+    get:
+      operationId: getTimelinePrompt
+      parameters:
+      - description: Must match the authenticated session's user ID.
+        in: path
+        name: userID
+        required: true
+        schema:
+          description: Must match the authenticated session's user ID.
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/V1TimelinePromptResp'
+          description: OK
+      summary: Get the user's timeline filtering prompt; returns an empty string when
+        unset. Requires authentication and ownership.
+      tags:
+      - timeline-prompt
+    put:
+      operationId: setTimelinePrompt
+      parameters:
+      - description: Must match the authenticated session's user ID.
+        in: path
+        name: userID
+        required: true
+        schema:
+          description: Must match the authenticated session's user ID.
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/V1PutTimelinePromptReq'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/V1TimelinePromptResp'
+          description: OK
+      summary: Replace the user's timeline filtering prompt (maximum 16 KiB UTF-8
+        bytes); an empty string clears it. Requires authentication and ownership.
+        Does not reprocess the timeline.
+      tags:
+      - timeline-prompt
   /api/viewer:
     get:
       operationId: getViewer
@@ -245,6 +294,15 @@ components:
         feed_url:
           type: string
       type: object
+    V1PutTimelinePromptReq:
+      properties:
+        prompt:
+          description: Timeline filtering prompt, at most 16 KiB of decoded UTF-8
+            bytes. An empty string clears it.
+          type: string
+      required:
+      - prompt
+      type: object
     V1SubscriptionListResp:
       properties:
         subscriptions:
@@ -285,6 +343,11 @@ components:
         title:
           type: string
         url:
+          type: string
+      type: object
+    V1TimelinePromptResp:
+      properties:
+        prompt:
           type: string
       type: object
     V1TimelineResp:
