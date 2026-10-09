@@ -102,7 +102,7 @@ func main() {
 		},
 		{
 			method: http.MethodPut, path: "/api/users/{userID}/timeline-prompt", id: "setTimelinePrompt", tag: "timeline-prompt",
-			summary:   "Replace the user's timeline filtering prompt (maximum 16 KiB UTF-8 bytes); an empty string clears it. Requires authentication and ownership. Does not reprocess the timeline.",
+			summary:   "Replace the user's timeline filtering prompt (maximum 1000 Unicode characters); an empty string clears it. Requires authentication and ownership. Does not reprocess the timeline.",
 			reqParams: userPath{}, reqBody: apiv1.PutTimelinePromptReq{}, resp: apiv1.TimelinePromptResp{}, status: http.StatusOK,
 		},
 		{
