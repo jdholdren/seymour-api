@@ -56,7 +56,7 @@ handler body. Because of that, the compiler won't catch a breaking change to
 a response shape the way it would for a typed return value.
 
 Whenever you touch a handler in this package (or a helper it calls to build
-its response, e.g. `apiSubscription`, `apiFilter`), read the full body of
+its response, e.g. `apiSubscription`), read the full body of
 that handler down to its `writeJSON` call(s) and check whether the shape
 being written has changed in a breaking way for existing clients:
 - a field removed or renamed
