@@ -62,6 +62,9 @@ Check returned handler errors directly; cookie decoding and authentication
 middleware belong in their own tests, not handler tests.
 Use Uber gomock with the generated services in `internal/mock`, rather than
 hand-written service mocks. Keep cases focused on a single handler call.
+Prefer standalone tests named for the handler and expected behavior (for example,
+`TestGetTimelinePromptReturnsStoredPrompt`), rather than broad feature tests or
+subtests grouping distinct behaviors.
 Test application behavior (validation limits, service arguments, responses, and
 ownership), not JSON decoding or other behavior already provided by libraries.
 
