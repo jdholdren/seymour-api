@@ -60,8 +60,16 @@ than constructing the full server/router. Set the authenticated user ID in the
 request context (`userIDCtxKey`) and path parameters with `mux.SetURLVars`.
 Check returned handler errors directly; cookie decoding and authentication
 middleware belong in their own tests, not handler tests.
+
 Use Uber gomock with the generated services in `internal/mock`, rather than
 hand-written service mocks. Keep cases focused on a single handler call.
+Centralize server and mock setup in `newRig(t)`, returning a rig that exposes
+`server` and every mock it creates (`users`, `feeds`, and `timeline`). The helper
+calls `t.Helper()`, creates a gomock controller, and wires the mocks into the
+server. Reuse the rig in each test: configure expectations on `rig.users` (or
+another exposed mock), then call the handler directly on `rig.server`. Keep
+request construction and authentication context explicit in the test.
+
 Prefer standalone tests named for the handler and expected behavior (for example,
 `TestGetTimelinePromptReturnsStoredPrompt`), rather than broad feature tests or
 subtests grouping distinct behaviors.
