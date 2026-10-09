@@ -298,10 +298,8 @@ components:
       properties:
         prompt:
           description: Timeline filtering prompt, at most 16 KiB of decoded UTF-8
-            bytes. An empty string clears it.
+            bytes. An empty, omitted, or null prompt clears it.
           type: string
-      required:
-      - prompt
       type: object
     V1SubscriptionListResp:
       properties:

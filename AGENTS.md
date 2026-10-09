@@ -12,6 +12,13 @@ When editing API handlers or response-building helpers, follow
 
 Seymour is an RSS feed aggregator with a curated timeline, moving from single-tenant to multi-tenant. Users subscribe to RSS feeds, and a Temporal worker syncs feeds, builds a timeline, then judges entries to decide what gets surfaced. The frontend is a separate project (expected at localhost:3000).
 
+## Code style
+
+Prefer paragraphing: use blank lines to group related blocks of logic and
+separate distinct steps, such as validation, data access, and response building.
+Keep closely related statements together rather than separating every statement.
+Apply the same grouping to test setup, actions, and assertions.
+
 ## Common Commands
 
 - `make test` — Run all tests (`go test ./...`)

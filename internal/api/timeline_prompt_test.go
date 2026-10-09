@@ -16,9 +16,9 @@ import (
 
 type timelinePromptUsers struct {
 	seymour.UserService
-	prompt  *string
-	userErr error
-	setErr  error
+	prompt   *string
+	userErr  error
+	setErr   error
 	setCalls int
 }
 
@@ -26,30 +26,38 @@ func (u *timelinePromptUsers) User(_ context.Context, id string) (seymour.User, 
 	if u.userErr != nil {
 		return seymour.User{}, u.userErr
 	}
+
 	return seymour.User{ID: id, TimelinePrompt: u.prompt}, nil
 }
 
-func (u *timelinePromptUsers) SetTimelinePrompt(_ context.Context, _ string, prompt string) error {
+func (u *timelinePromptUsers) UpdateUser(_ context.Context, _ string, args seymour.UpdateUserArgs) error {
 	u.setCalls++
 	if u.setErr != nil {
 		return u.setErr
 	}
-	if prompt == "" {
-		u.prompt = nil
-	} else {
-		u.prompt = &prompt
+
+	if args.TimelinePrompt != nil {
+		if *args.TimelinePrompt == "" {
+			u.prompt = nil
+		} else {
+			u.prompt = args.TimelinePrompt
+		}
 	}
+
 	return nil
 }
 
 func newTimelinePromptAPI(t *testing.T) (http.Handler, *securecookie.SecureCookie, *timelinePromptUsers) {
 	t.Helper()
+
 	users := &timelinePromptUsers{}
 	hashKey := []byte("01234567890123456789012345678901")
 	blockKey := []byte("0123456789012345")
 	secure := securecookie.New(hashKey, blockKey)
+
 	frontend, _ := url.Parse("http://localhost:3000")
 	server := NewServer(0, "", nil, nil, users, nil, nil, hashKey, blockKey, frontend)
+
 	return server.Handler, secure, users
 }
 
@@ -59,6 +67,7 @@ func timelinePromptRequest(t *testing.T, handler http.Handler, secure *securecoo
 
 func timelinePromptRequestAs(t *testing.T, handler http.Handler, secure *securecookie.SecureCookie, method, userID, sessionID, body string, authenticated bool) *httptest.ResponseRecorder {
 	t.Helper()
+
 	req := httptest.NewRequest(method, "/api/users/"+userID+"/timeline-prompt", strings.NewReader(body))
 	if authenticated {
 		value, err := secure.Encode(sessionCookie, session{UserID: sessionID})
@@ -67,8 +76,10 @@ func timelinePromptRequestAs(t *testing.T, handler http.Handler, secure *securec
 		}
 		req.AddCookie(&http.Cookie{Name: sessionCookie, Value: value})
 	}
+
 	resp := httptest.NewRecorder()
 	handler.ServeHTTP(resp, req)
+
 	return resp
 }
 
@@ -76,6 +87,7 @@ func TestTimelinePromptAuthAndRoundTrip(t *testing.T) {
 	handler, secure, users := newTimelinePromptAPI(t)
 	initial := "existing prompt"
 	users.prompt = &initial
+
 	if got := timelinePromptRequest(t, handler, secure, http.MethodGet, "alice", "", false).Code; got != http.StatusUnauthorized {
 		t.Fatalf("unauthenticated status = %d, want 401", got)
 	}
@@ -88,6 +100,7 @@ func TestTimelinePromptAuthAndRoundTrip(t *testing.T) {
 	if users.setCalls != 0 || users.prompt == nil || *users.prompt != initial {
 		t.Fatalf("unauthorized PUT mutated prompt: calls=%d prompt=%v", users.setCalls, users.prompt)
 	}
+
 	got := timelinePromptRequest(t, handler, secure, http.MethodGet, "alice", "", true)
 	var response struct {
 		Prompt string `json:"prompt"`
@@ -95,6 +108,7 @@ func TestTimelinePromptAuthAndRoundTrip(t *testing.T) {
 	if got.Code != http.StatusOK || json.Unmarshal(got.Body.Bytes(), &response) != nil || response.Prompt != initial {
 		t.Fatalf("GET after rejected PUT = %d %s", got.Code, got.Body.String())
 	}
+
 	prompt := "Keep  spaces and \"quotes\"\n世界"
 	got = timelinePromptRequest(t, handler, secure, http.MethodPut, "alice", fmt.Sprintf(`{"prompt":%q}`, prompt), true)
 	if got.Code != http.StatusOK || json.Unmarshal(got.Body.Bytes(), &response) != nil || response.Prompt != prompt {
@@ -103,14 +117,17 @@ func TestTimelinePromptAuthAndRoundTrip(t *testing.T) {
 	if users.prompt == nil || *users.prompt != prompt {
 		t.Fatalf("stored prompt = %v", users.prompt)
 	}
+
 	got = timelinePromptRequest(t, handler, secure, http.MethodGet, "alice", "", true)
 	if got.Code != http.StatusOK || json.Unmarshal(got.Body.Bytes(), &response) != nil || response.Prompt != prompt {
 		t.Fatalf("GET after PUT = %d %s", got.Code, got.Body.String())
 	}
+
 	got = timelinePromptRequest(t, handler, secure, http.MethodPut, "alice", `{"prompt":""}`, true)
 	if got.Code != http.StatusOK || users.prompt != nil {
 		t.Fatalf("clear PUT = %d %s, stored %v", got.Code, got.Body.String(), users.prompt)
 	}
+
 	got = timelinePromptRequest(t, handler, secure, http.MethodGet, "alice", "", true)
 	if got.Code != http.StatusOK || json.Unmarshal(got.Body.Bytes(), &response) != nil || response.Prompt != "" {
 		t.Fatalf("GET after clear = %d %s", got.Code, got.Body.String())
@@ -134,6 +151,7 @@ func TestTimelinePromptServiceErrors(t *testing.T) {
 			handler, secure, users := newTimelinePromptAPI(t)
 			users.userErr = tc.userErr
 			users.setErr = tc.setErr
+
 			got := timelinePromptRequest(t, handler, secure, tc.method, "alice", `{"prompt":"new"}`, true)
 			if got.Code != tc.wantStatus {
 				t.Fatalf("status = %d, want %d: %s", got.Code, tc.wantStatus, got.Body.String())
@@ -144,8 +162,9 @@ func TestTimelinePromptServiceErrors(t *testing.T) {
 
 func TestTimelinePromptRejectsInvalidBodies(t *testing.T) {
 	handler, secure, _ := newTimelinePromptAPI(t)
+
 	for _, body := range []string{
-		`{}`, `{"prompt":null}`, `{"prompt":1}`, `{"prompt":false}`,
+		`{"prompt":1}`, `{"prompt":false}`, `{"prompt":[]}`, `[]`,
 		`{"prompt":"x"} {}`, `{"prompt":"unterminated}`, "not json",
 	} {
 		got := timelinePromptRequest(t, handler, secure, http.MethodPut, "alice", body, true)
@@ -155,14 +174,39 @@ func TestTimelinePromptRejectsInvalidBodies(t *testing.T) {
 	}
 }
 
+func TestTimelinePromptEmptyValuesClear(t *testing.T) {
+	for _, body := range []string{`{"prompt":""}`, `{}`, `{"prompt":null}`} {
+		t.Run(body, func(t *testing.T) {
+			handler, secure, users := newTimelinePromptAPI(t)
+			prompt := "existing prompt"
+			users.prompt = &prompt
+
+			got := timelinePromptRequest(t, handler, secure, http.MethodPut, "alice", body, true)
+			if got.Code != http.StatusOK || users.prompt != nil {
+				t.Fatalf("clear PUT = %d %s, stored %v", got.Code, got.Body.String(), users.prompt)
+			}
+		})
+	}
+}
+
+func TestTimelinePromptDoesNotLimitBodySize(t *testing.T) {
+	handler, secure, users := newTimelinePromptAPI(t)
+	body := strings.Repeat(" ", 128*1024) + `{"prompt":"keep this"}`
+
+	got := timelinePromptRequest(t, handler, secure, http.MethodPut, "alice", body, true)
+	if got.Code != http.StatusOK || users.prompt == nil || *users.prompt != "keep this" {
+		t.Fatalf("PUT with large body = %d %s, stored %v", got.Code, got.Body.String(), users.prompt)
+	}
+}
+
 func TestTimelinePromptSizeLimits(t *testing.T) {
 	handler, secure, _ := newTimelinePromptAPI(t)
+
 	for _, tc := range []struct {
 		name string
 		body string
 	}{
 		{"decoded limit", fmt.Sprintf(`{"prompt":%q}`, strings.Repeat("a", maxTimelinePromptBytes+1))},
-		{"body limit", `{"prompt":"` + strings.Repeat("a", maxTimelinePromptBodyBytes) + `"}`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			got := timelinePromptRequest(t, handler, secure, http.MethodPut, "alice", tc.body, true)
@@ -171,11 +215,13 @@ func TestTimelinePromptSizeLimits(t *testing.T) {
 			}
 		})
 	}
-	// Escaped JSON may exceed the decoded prompt length while remaining within the bounded body.
+
+	// Escaped JSON may exceed the decoded prompt length.
 	got := timelinePromptRequest(t, handler, secure, http.MethodPut, "alice", fmt.Sprintf(`{"prompt":%q}`, strings.Repeat("\n", maxTimelinePromptBytes/2)), true)
 	if got.Code != http.StatusOK {
 		t.Fatalf("escaped prompt status = %d, want 200", got.Code)
 	}
+
 	for _, tc := range []struct {
 		name   string
 		prompt string

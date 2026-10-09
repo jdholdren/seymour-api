@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 
+	sq "github.com/Masterminds/squirrel"
 	mysqldriver "github.com/go-sql-driver/mysql"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
@@ -33,30 +34,61 @@ func (r Repo) User(ctx context.Context, id string) (seymour.User, error) {
 	return user, nil
 }
 
-func (r Repo) SetTimelinePrompt(ctx context.Context, userID, prompt string) error {
-	var value any = prompt
-	if prompt == "" {
-		value = nil
+func (r Repo) UpdateUser(ctx context.Context, id string, args seymour.UpdateUserArgs) error {
+	q := sq.Update("users")
+	if args.PreferredName != nil {
+		q = q.Set("preferred_name", nullableUserValue(*args.PreferredName))
 	}
-	const q = `UPDATE users SET timeline_prompt = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?;`
-	result, err := r.db.ExecContext(ctx, q, value, userID)
+	if args.TimelinePrompt != nil {
+		q = q.Set("timeline_prompt", nullableUserValue(*args.TimelinePrompt))
+	}
+
+	if args.PreferredName == nil && args.TimelinePrompt == nil {
+		var exists bool
+		if err := r.db.GetContext(ctx, &exists, `SELECT EXISTS(SELECT 1 FROM users WHERE id = ?);`, id); err != nil {
+			return seymour.E(fmt.Errorf("error checking user existence: %w", err))
+		}
+		if !exists {
+			return seymour.ErrNotFound
+		}
+
+		return nil
+	}
+
+	q = q.Set("updated_at", sq.Expr("CURRENT_TIMESTAMP")).Where(sq.Eq{"id": id})
+	query, queryArgs, err := q.ToSql()
 	if err != nil {
-		return seymour.E(fmt.Errorf("error setting timeline prompt: %w", err))
+		return seymour.E(fmt.Errorf("error constructing user update: %w", err))
 	}
+
+	result, err := r.db.ExecContext(ctx, query, queryArgs...)
+	if err != nil {
+		return seymour.E(fmt.Errorf("error updating user: %w", err))
+	}
+
 	rows, err := result.RowsAffected()
 	if err != nil {
-		return seymour.E(fmt.Errorf("error checking timeline prompt update: %w", err))
+		return seymour.E(fmt.Errorf("error checking user update: %w", err))
 	}
+
 	if rows == 0 {
 		var exists bool
-		if err := r.db.GetContext(ctx, &exists, `SELECT EXISTS(SELECT 1 FROM users WHERE id = ?);`, userID); err != nil {
+		if err := r.db.GetContext(ctx, &exists, `SELECT EXISTS(SELECT 1 FROM users WHERE id = ?);`, id); err != nil {
 			return seymour.E(fmt.Errorf("error checking user existence: %w", err))
 		}
 		if !exists {
 			return seymour.ErrNotFound
 		}
 	}
+
 	return nil
+}
+
+func nullableUserValue(value string) any {
+	if value == "" {
+		return nil
+	}
+	return value
 }
 
 // userLoginByIdp fetches a user and their login by idp/idp id using the given queryer,
