@@ -4,6 +4,9 @@
   live here and are reused across the app.
 - Timestamps are plain `time.Time` fields — the MySQL driver handles
   `DATETIME`/`TIMESTAMP` marshaling given `parseTime=true` on the DSN.
+- Partial user updates use `*sql.NullString` fields: a nil pointer leaves the
+  field unchanged, `Valid: false` clears it to SQL `NULL`, and `Valid: true`
+  stores the supplied string (including an empty string).
 - Errors returned from any `Service` implementation should be a
   `*seymour.Error` (built via `seymour.E(...)`, or a sentinel like
   `seymour.ErrNotFound`/`seymour.ErrConflict`) rather than a plain `error`,

@@ -1,8 +1,8 @@
 package api
 
 import (
+	"database/sql"
 	"encoding/json"
-	"io"
 	"net/http"
 	"unicode/utf8"
 
@@ -53,16 +53,12 @@ func (s Server) putTimelinePrompt(w http.ResponseWriter, r *http.Request) error 
 		return seymour.E("invalid request body", http.StatusBadRequest)
 	}
 
-	var trailing any
-	if err := decoder.Decode(&trailing); err != io.EOF {
-		return seymour.E("invalid request body", http.StatusBadRequest)
-	}
-
 	if utf8.RuneCountInString(req.Prompt) > maxTimelinePromptCharacters {
 		return seymour.E("prompt exceeds 1000 character limit", http.StatusBadRequest)
 	}
 
-	if err := s.users.UpdateUser(r.Context(), userID, seymour.UpdateUserArgs{TimelinePrompt: &req.Prompt}); err != nil {
+	prompt := sql.NullString{String: req.Prompt, Valid: req.Prompt != ""}
+	if err := s.users.UpdateUser(r.Context(), userID, seymour.UpdateUserArgs{TimelinePrompt: &prompt}); err != nil {
 		return err
 	}
 

@@ -7,7 +7,7 @@ services:
         MAIN_PATH: ./cmd/worker
     env_file: .env
     environment:
-      - DATABASE=seymour:seymour@tcp(mysql:3306)/seymour?parseTime=true&multiStatements=true
+      - DATABASE=seymour:seymour@tcp(mysql:3306)/seymour?parseTime=true&multiStatements=true&clientFoundRows=true
       - TEMPORAL_HOST_PORT=temporal-server:7233
     depends_on:
       temporal-server:
@@ -25,7 +25,7 @@ services:
       - "4444:4444"
     env_file: .env
     environment:
-      - DATABASE=seymour:seymour@tcp(mysql:3306)/seymour?parseTime=true&multiStatements=true
+      - DATABASE=seymour:seymour@tcp(mysql:3306)/seymour?parseTime=true&multiStatements=true&clientFoundRows=true
       - TEMPORAL_HOST_PORT=temporal-server:7233
       - PORT=4444
       - CORS=http://localhost:3000
