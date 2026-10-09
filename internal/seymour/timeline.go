@@ -21,15 +21,6 @@ type TimelineService interface {
 	UpdateTimelineEntry(ctx context.Context, id string, status TimelineEntryStatus) error
 	TimelineEntries(ctx context.Context, args TimelineEntriesArgs) ([]TimelineEntry, error)
 	CountTimelineEntries(ctx context.Context, args TimelineEntriesArgs) (int, error)
-
-	// CreateFilter inserts a new filter into storage, returning its ID.
-	CreateFilter(ctx context.Context, userID string, filter Filter) (string, error)
-	// UserFilters fetches all filters belonging to a user.
-	UserFilters(ctx context.Context, userID string) ([]Filter, error)
-	// Filter fetches a single filter by ID.
-	Filter(ctx context.Context, id string) (Filter, error)
-	// DeleteFilter removes a filter, and its backing config, from storage.
-	DeleteFilter(ctx context.Context, id string) error
 }
 
 // Subscription represents a subscription to a feed.
@@ -83,38 +74,3 @@ const (
 	TimelineEntryStatusApproved          TimelineEntryStatus = "approved"
 	TimelineEntryStatusRejected          TimelineEntryStatus = "rejected"
 )
-
-// FilterType enumerates the different filter "features" a user can
-// configure to help curate their timeline during judgement.
-type FilterType string
-
-const (
-	FilterTypeAllowList    FilterType = "allow_list"
-	FilterTypeDisallowList FilterType = "disallow_list"
-)
-
-// Filter is implemented by every filter config type, giving a bit of
-// polymorphism since each config has a different shape.
-type Filter interface {
-	Type() FilterType
-}
-
-// DisallowListConfig rejects an entry outright if its title or description
-// matches any of Keywords.
-type DisallowListConfig struct {
-	ID       string // ID of the underlying user_filters row.
-	UserID   string // UserID of the underlying user_filters row.
-	Keywords []string
-}
-
-func (DisallowListConfig) Type() FilterType { return FilterTypeDisallowList }
-
-// AllowListConfig, when present, requires an entry's title or description
-// to match one of Keywords in order to be approved.
-type AllowListConfig struct {
-	ID       string // ID of the underlying user_filters row.
-	UserID   string // UserID of the underlying user_filters row.
-	Keywords []string
-}
-
-func (AllowListConfig) Type() FilterType { return FilterTypeAllowList }
