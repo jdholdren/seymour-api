@@ -2,7 +2,6 @@ package seymour
 
 import (
 	"context"
-	"database/sql"
 	"time"
 )
 
@@ -18,11 +17,10 @@ type User struct {
 	UpdatedAt      time.Time `db:"updated_at"`
 }
 
-// UpdateUserArgs contains the user fields to update. Nil fields are left unchanged;
-// non-nil invalid values clear the field, while valid values (including empty strings) are stored.
+// UpdateUserArgs contains the user fields to update. Nil fields are left unchanged.
 type UpdateUserArgs struct {
-	PreferredName  *sql.NullString
-	TimelinePrompt *sql.NullString
+	PreferredName  *string
+	TimelinePrompt *string
 }
 
 // Idp is an enum of the supported identity providers for login.
@@ -47,7 +45,6 @@ type UserService interface {
 	// If the user login is already found, the found login is just returned with the user (no modification).
 	// Otherwise, both are created and returned.
 	EnsureUser(ctx context.Context, idp Idp, id string) (User, UserLogin, error)
-	// Updates the supplied user fields. Nil values are left unchanged, invalid nullable values clear the field,
-	// and valid values (including empty strings) are stored.
+	// Updates the supplied user fields. Empty nullable values clear the field.
 	UpdateUser(ctx context.Context, id string, args UpdateUserArgs) error
 }
