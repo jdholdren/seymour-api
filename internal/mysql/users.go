@@ -37,10 +37,10 @@ func (r Repo) User(ctx context.Context, id string) (seymour.User, error) {
 func (r Repo) UpdateUser(ctx context.Context, id string, args seymour.UpdateUserArgs) error {
 	q := sq.Update("users")
 	if args.PreferredName != nil {
-		q = q.Set("preferred_name", *args.PreferredName)
+		q = q.Set("preferred_name", nullableUserValue(*args.PreferredName))
 	}
 	if args.TimelinePrompt != nil {
-		q = q.Set("timeline_prompt", *args.TimelinePrompt)
+		q = q.Set("timeline_prompt", nullableUserValue(*args.TimelinePrompt))
 	}
 
 	if args.PreferredName == nil && args.TimelinePrompt == nil {
@@ -72,10 +72,23 @@ func (r Repo) UpdateUser(ctx context.Context, id string, args seymour.UpdateUser
 	}
 
 	if rows == 0 {
-		return seymour.ErrNotFound
+		var exists bool
+		if err := r.db.GetContext(ctx, &exists, `SELECT EXISTS(SELECT 1 FROM users WHERE id = ?);`, id); err != nil {
+			return seymour.E(fmt.Errorf("error checking user existence: %w", err))
+		}
+		if !exists {
+			return seymour.ErrNotFound
+		}
 	}
 
 	return nil
+}
+
+func nullableUserValue(value string) any {
+	if value == "" {
+		return nil
+	}
+	return value
 }
 
 // userLoginByIdp fetches a user and their login by idp/idp id using the given queryer,
