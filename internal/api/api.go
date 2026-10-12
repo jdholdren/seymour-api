@@ -141,8 +141,6 @@ func NewServer(
 
 	// Timeline view
 	protected.HandleFuncE("/users/{userID}/timeline", srvr.getTimeline).Methods(http.MethodGet)
-	protected.HandleFuncE("/users/{userID}/timeline-prompt", srvr.getTimelinePrompt).Methods(http.MethodGet)
-	protected.HandleFuncE("/users/{userID}/timeline-prompt", srvr.putTimelinePrompt).Methods(http.MethodPut)
 
 	// Reader view
 	protected.HandleFuncE("/feed-entries/{feedEntryID}", srvr.getFeedEntry).Methods(http.MethodGet)
