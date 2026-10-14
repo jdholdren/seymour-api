@@ -12,6 +12,13 @@ timeline's `from`/`to` filters). Its zero value means "unset" (`IsZero()`),
 so prefer a plain `Date` over `*Date` in structs — don't reach for a pointer
 just to express absence.
 
+## JSON request decoding
+
+Decode JSON directly from `r.Body` with `json.NewDecoder`. Let `encoding/json`
+handle whitespace and syntax; do not pre-read/trim the body with `TrimSpace`
+or inspect its first byte. Check required fields after decoding rather than
+adding redundant raw-body checks.
+
 ## Endpoints
 
 - `GET /api/viewer` — Viewer info; works logged-out too (returns empty

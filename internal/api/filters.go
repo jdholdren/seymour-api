@@ -1,7 +1,6 @@
 package api
 
 import (
-	"bytes"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -20,26 +19,16 @@ func (s Server) filterUser(r *http.Request) (string, error) {
 	return userID, nil
 }
 
-// decodeFilterBody enforces a single, non-null JSON object with no unknown fields.
+// decodeFilterBody decodes one request value and rejects unknown fields.
 func decodeFilterBody(r *http.Request, dst any) error {
-	// Buffer the request so syntax and the second-value check share one strict decoder.
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		return seymour.E("invalid JSON body", http.StatusBadRequest)
-	}
-
-	// Filter requests must be objects; in particular, JSON null must not decode as an empty struct.
-	trimmed := bytes.TrimSpace(body)
-	if len(trimmed) == 0 || trimmed[0] != '{' {
-		return seymour.E("request body must be a JSON object", http.StatusBadRequest)
-	}
-
-	// Reject unknown fields and any content after the one request value.
-	decoder := json.NewDecoder(bytes.NewReader(trimmed))
+	// Let the JSON decoder handle syntax and whitespace directly from the body.
+	decoder := json.NewDecoder(r.Body)
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(dst); err != nil {
 		return seymour.E("invalid JSON body", http.StatusBadRequest)
 	}
+
+	// Only whitespace may follow the request value; required fields are checked by the handler.
 	if err := decoder.Decode(new(any)); err != io.EOF {
 		return seymour.E("request body must contain one JSON value", http.StatusBadRequest)
 	}
