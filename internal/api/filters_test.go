@@ -69,6 +69,8 @@ func filterServer(t *testing.T, service *filterServiceFake) (*Server, http.Handl
 	return server, server.Handler
 }
 
+// TODO: Set session information on the request context in handler tests so setup
+// can avoid signing cookies; keep middleware authentication coverage separate.
 func filterRequest(t *testing.T, server *Server, handler http.Handler, method, path, body, userID string) *httptest.ResponseRecorder {
 	t.Helper()
 	req := httptest.NewRequest(method, path, strings.NewReader(body))
