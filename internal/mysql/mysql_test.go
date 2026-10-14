@@ -80,6 +80,7 @@ func runTests(m *testing.M) (int, error) {
 // satisfy FK dependency order if the schema ever gains declared foreign keys
 // (it doesn't today; ordering here is just future-proofing).
 var tables = []string{
+	"filters",
 	"timeline_entries",
 	"subscriptions",
 	"feed_entries",

@@ -9,8 +9,7 @@ import (
 	"github.com/jdholdren/seymour/internal/seymour"
 )
 
-// Repo implements seymour.UserService, seymour.FeedService, and
-// seymour.TimelineService against a MySQL database.
+// Repo implements Seymour's service interfaces against a MySQL database.
 type Repo struct {
 	db *sqlx.DB
 }
@@ -23,4 +22,5 @@ var (
 	_ seymour.UserService     = Repo{}
 	_ seymour.FeedService     = Repo{}
 	_ seymour.TimelineService = Repo{}
+	_ seymour.FilterService   = Repo{}
 )
