@@ -127,6 +127,7 @@ func main() {
 		repo,
 		repo,
 		repo,
+		repo,
 		temporalCli,
 		oauthCfg,
 		sessionHashKey,

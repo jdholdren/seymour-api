@@ -12,6 +12,13 @@ timeline's `from`/`to` filters). Its zero value means "unset" (`IsZero()`),
 so prefer a plain `Date` over `*Date` in structs — don't reach for a pointer
 just to express absence.
 
+## JSON request decoding
+
+Decode JSON directly from `r.Body` with `json.NewDecoder`. Let `encoding/json`
+handle whitespace and syntax; do not pre-read/trim the body with `TrimSpace`
+or inspect its first byte. Check required fields after decoding rather than
+adding redundant raw-body checks.
+
 ## Endpoints
 
 - `GET /api/viewer` — Viewer info; works logged-out too (returns empty
@@ -23,6 +30,18 @@ just to express absence.
 - `DELETE /api/subscriptions/{subscriptionID}` — Delete a subscription;
   ownership is checked by fetching the subscription and comparing its
   `user_id` to the session
+- `GET /api/users/{userID}/filters` — List filters for that user
+- `POST /api/users/{userID}/filters` — Create a filter; only one filter of
+  each type may exist per user (duplicate type returns 409)
+- `GET /api/users/{userID}/filters/{filterID}` — Read a filter
+- `PUT /api/users/{userID}/filters/{filterID}` — Fully replace a filter's
+  enabled state and config without changing its type or creating a missing
+  filter; exactly one matching config variant is required. Omitted list values
+  are cleared, and list fields are returned as empty arrays rather than null
+- `DELETE /api/users/{userID}/filters/{filterID}` — Delete a filter
+- Filter routes require `{userID}` to match the authenticated session. AI
+  filters use `ai_config` (`prompt`); list filters use `list_config`
+  (`allowlist` and `disallowlist`)
 - `GET /api/users/{userID}/timeline` — Paginated curated timeline for that
   user (supports `feed_id`, `status` — one of
   `requires_judgement`/`approved`/`rejected`, defaults to all — and

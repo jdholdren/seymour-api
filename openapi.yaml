@@ -177,6 +177,119 @@ paths:
         and publish date.
       tags:
       - timeline
+  /api/users/{userID}/filters:
+    get:
+      operationId: listFilters
+      parameters:
+      - in: path
+        name: userID
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/V1FilterListResp'
+          description: OK
+      summary: List the user's filters.
+      tags:
+      - filters
+    post:
+      operationId: createFilter
+      parameters:
+      - in: path
+        name: userID
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/V1PostFilterReq'
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/V1FilterResp'
+          description: Created
+      summary: Create a filter; each user may have one filter of each type.
+      tags:
+      - filters
+  /api/users/{userID}/filters/{filterID}:
+    delete:
+      operationId: deleteFilter
+      parameters:
+      - in: path
+        name: userID
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: filterID
+        required: true
+        schema:
+          type: string
+      responses:
+        "204":
+          description: No Content
+      summary: Delete a filter.
+      tags:
+      - filters
+    get:
+      operationId: getFilter
+      parameters:
+      - in: path
+        name: userID
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: filterID
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/V1FilterResp'
+          description: OK
+      summary: Get a filter.
+      tags:
+      - filters
+    put:
+      operationId: updateFilter
+      parameters:
+      - in: path
+        name: userID
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: filterID
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/V1PutFilterReq'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/V1FilterResp'
+          description: OK
+      summary: Replace a filter's enabled state and configuration.
+      tags:
+      - filters
   /api/viewer:
     get:
       operationId: getViewer
@@ -231,6 +344,101 @@ components:
         url:
           type: string
       type: object
+    V1FilterAIConfig:
+      properties:
+        prompt:
+          type: string
+      type: object
+    V1FilterListConfig:
+      properties:
+        allowlist:
+          items:
+            type: string
+          nullable: true
+          type: array
+        disallowlist:
+          items:
+            type: string
+          nullable: true
+          type: array
+      type: object
+    V1FilterListResp:
+      properties:
+        filters:
+          items:
+            $ref: '#/components/schemas/V1FilterResp'
+          type: array
+      type: object
+    V1FilterResp:
+      oneOf:
+      - additionalProperties: false
+        properties:
+          ai_config:
+            $ref: '#/components/schemas/V1FilterAIConfig'
+          created_at:
+            format: date-time
+            type: string
+          enabled:
+            type: boolean
+          id:
+            type: string
+          type:
+            enum:
+            - ai
+            type: string
+          updated_at:
+            format: date-time
+            type: string
+          user_id:
+            type: string
+        required:
+        - id
+        - user_id
+        - type
+        - enabled
+        - ai_config
+        - created_at
+        - updated_at
+        type: object
+      - additionalProperties: false
+        properties:
+          created_at:
+            format: date-time
+            type: string
+          enabled:
+            type: boolean
+          id:
+            type: string
+          list_config:
+            properties:
+              allowlist:
+                items:
+                  type: string
+                type: array
+              disallowlist:
+                items:
+                  type: string
+                type: array
+            type: object
+          type:
+            enum:
+            - list
+            type: string
+          updated_at:
+            format: date-time
+            type: string
+          user_id:
+            type: string
+        required:
+        - id
+        - user_id
+        - type
+        - enabled
+        - list_config
+        - created_at
+        - updated_at
+        type: object
+      type: object
     V1PaginationMeta:
       properties:
         limit:
@@ -240,10 +448,66 @@ components:
         total:
           type: integer
       type: object
+    V1PostFilterReq:
+      oneOf:
+      - additionalProperties: false
+        properties:
+          ai_config:
+            $ref: '#/components/schemas/V1FilterAIConfig'
+          enabled:
+            type: boolean
+          type:
+            enum:
+            - ai
+            type: string
+        required:
+        - type
+        - enabled
+        - ai_config
+        type: object
+      - additionalProperties: false
+        properties:
+          enabled:
+            type: boolean
+          list_config:
+            $ref: '#/components/schemas/V1FilterListConfig'
+          type:
+            enum:
+            - list
+            type: string
+        required:
+        - type
+        - enabled
+        - list_config
+        type: object
+      type: object
     V1PostSubscriptionReq:
       properties:
         feed_url:
           type: string
+      type: object
+    V1PutFilterReq:
+      oneOf:
+      - additionalProperties: false
+        properties:
+          ai_config:
+            $ref: '#/components/schemas/V1FilterAIConfig'
+          enabled:
+            type: boolean
+        required:
+        - enabled
+        - ai_config
+        type: object
+      - additionalProperties: false
+        properties:
+          enabled:
+            type: boolean
+          list_config:
+            $ref: '#/components/schemas/V1FilterListConfig'
+        required:
+        - enabled
+        - list_config
+        type: object
       type: object
     V1SubscriptionListResp:
       properties:

@@ -71,6 +71,7 @@ type Server struct {
 	entryRespCache *lru.Cache[string, apiv1.FeedEntryResp]
 
 	feeds    seymour.FeedService
+	filters  seymour.FilterService
 	timeline seymour.TimelineService
 	users    seymour.UserService
 	tempCli  client.Client
@@ -84,6 +85,7 @@ func NewServer(
 	port int,
 	corsHeader string,
 	feeds seymour.FeedService,
+	filters seymour.FilterService,
 	timeline seymour.TimelineService,
 	users seymour.UserService,
 	temporalCli client.Client,
@@ -102,6 +104,7 @@ func NewServer(
 		},
 		entryRespCache: cache,
 		feeds:          feeds,
+		filters:        filters,
 		timeline:       timeline,
 		users:          users,
 		tempCli:        temporalCli,
@@ -138,6 +141,11 @@ func NewServer(
 	protected.HandleFuncE("/users/{userID}/subscriptions", srvr.postSusbcriptions).Methods(http.MethodPost)
 	protected.HandleFuncE("/users/{userID}/subscriptions", srvr.getSusbcriptions).Methods(http.MethodGet)
 	protected.HandleFuncE("/subscriptions/{subscriptionID}", srvr.deleteSubscription).Methods(http.MethodDelete)
+	protected.HandleFuncE("/users/{userID}/filters", srvr.getFilters).Methods(http.MethodGet)
+	protected.HandleFuncE("/users/{userID}/filters", srvr.postFilter).Methods(http.MethodPost)
+	protected.HandleFuncE("/users/{userID}/filters/{filterID}", srvr.getFilter).Methods(http.MethodGet)
+	protected.HandleFuncE("/users/{userID}/filters/{filterID}", srvr.putFilter).Methods(http.MethodPut)
+	protected.HandleFuncE("/users/{userID}/filters/{filterID}", srvr.deleteFilter).Methods(http.MethodDelete)
 
 	// Timeline view
 	protected.HandleFuncE("/users/{userID}/timeline", srvr.getTimeline).Methods(http.MethodGet)
