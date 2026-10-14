@@ -8,6 +8,27 @@ Follow the nested `AGENTS.md` files for the packages listed below.
 When editing API handlers or response-building helpers, follow
 `internal/api/AGENTS.md`, including its response shape checks.
 
+## Code paragraphing
+
+- Break function bodies into logical paragraphs separated by blank lines so
+  readers can see how the problem is decomposed: ownership lookup, validation,
+  encoding, persistence, and result handling, for example.
+- Introduce each nontrivial paragraph with a short comment explaining its
+  purpose or invariant. Describe why the steps belong together, not merely
+  what the next statement does. Avoid generic labels such as "Validate" or
+  "Assert", and don't comment every individual statement.
+- Keep each operation and its immediate error handling in the same paragraph.
+  Start a new paragraph when the responsibility changes; don't bury several
+  distinct steps in one uninterrupted block.
+- Group struct fields and multiline literals by responsibility when that makes
+  identity, configuration, and timestamps easier to distinguish. Keep trivial
+  helpers compact rather than adding artificial sections.
+- In tests, separate scenario setup, the behavior under test, and expectations
+  into commented paragraphs. Use subtests only for genuine table-driven cases,
+  not as headings for independent behaviors.
+- Apply this guidance to production code as well as tests. For readability-only
+  changes, preserve control flow, calls, signatures, and serialized identifiers.
+
 ## What is Seymour?
 
 Seymour is an RSS feed aggregator with a curated timeline, moving from single-tenant to multi-tenant. Users subscribe to RSS feeds, and a Temporal worker syncs feeds, builds a timeline, then judges entries to decide what gets surfaced. The frontend is a separate project (expected at localhost:3000).

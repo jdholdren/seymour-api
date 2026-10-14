@@ -27,10 +27,18 @@ type filterRow struct {
 }
 
 func (row filterRow) model() (seymour.Filter, error) {
+	// Preserve stored ownership and lifecycle fields independently of the config variant.
 	filter := seymour.Filter{
-		ID: row.ID, UserID: row.UserID, Type: row.Type, Enabled: row.Enabled,
-		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
+		ID:      row.ID,
+		UserID:  row.UserID,
+		Type:    row.Type,
+		Enabled: row.Enabled,
+
+		CreatedAt: row.CreatedAt,
+		UpdatedAt: row.UpdatedAt,
 	}
+
+	// Populate only the config selected by the stored type.
 	switch row.Type {
 	case seymour.FilterTypeAI:
 		var config seymour.AIConfig
@@ -47,6 +55,8 @@ func (row filterRow) model() (seymour.Filter, error) {
 	default:
 		return seymour.Filter{}, fmt.Errorf("unknown filter type %q", row.Type)
 	}
+
+	// Valid JSON alone does not guarantee a valid domain configuration.
 	if err := seymour.ValidateFilter(filter); err != nil {
 		return seymour.Filter{}, fmt.Errorf("invalid stored filter: %w", err)
 	}
@@ -70,11 +80,14 @@ func filterInternalError(action string, err error) error {
 
 // Filters returns all filters belonging to userID, including disabled filters.
 func (r Repo) Filters(ctx context.Context, userID string) ([]seymour.Filter, error) {
+	// Fetch this user's rows in a stable order without excluding disabled filters.
 	const q = `SELECT id, user_id, type, enabled, config, created_at, updated_at FROM filters WHERE user_id = ? ORDER BY created_at, id;`
 	var rows []filterRow
 	if err := r.db.SelectContext(ctx, &rows, q, userID); err != nil {
 		return nil, filterInternalError("fetch filters", err)
 	}
+
+	// Decode every stored config before returning a complete domain collection.
 	filters := make([]seymour.Filter, 0, len(rows))
 	for _, row := range rows {
 		filter, err := row.model()
@@ -88,6 +101,7 @@ func (r Repo) Filters(ctx context.Context, userID string) ([]seymour.Filter, err
 
 // Filter returns a filter only when it belongs to userID.
 func (r Repo) Filter(ctx context.Context, userID, id string) (seymour.Filter, error) {
+	// Scope the lookup so missing and other-user filters are indistinguishable.
 	const q = `SELECT id, user_id, type, enabled, config, created_at, updated_at FROM filters WHERE user_id = ? AND id = ?;`
 	var row filterRow
 	if err := r.db.GetContext(ctx, &row, q, userID, id); errors.Is(err, sql.ErrNoRows) {
@@ -95,6 +109,8 @@ func (r Repo) Filter(ctx context.Context, userID, id string) (seymour.Filter, er
 	} else if err != nil {
 		return seymour.Filter{}, filterInternalError("fetch filter", err)
 	}
+
+	// Convert storage errors into internal errors rather than accepting invalid configs.
 	filter, err := row.model()
 	if err != nil {
 		return seymour.Filter{}, filterInternalError("decode filter", err)
@@ -104,14 +120,26 @@ func (r Repo) Filter(ctx context.Context, userID, id string) (seymour.Filter, er
 
 // CreateFilter creates a filter owned by userID.
 func (r Repo) CreateFilter(ctx context.Context, userID string, args seymour.CreateFilterArgs) (seymour.Filter, error) {
-	filter := seymour.Filter{UserID: userID, Type: args.Type, Enabled: args.Enabled, AIConfig: args.AIConfig, ListConfig: args.ListConfig}
+	// Reject invalid type/config combinations before attempting any database write.
+	filter := seymour.Filter{
+		UserID:  userID,
+		Type:    args.Type,
+		Enabled: args.Enabled,
+
+		AIConfig:   args.AIConfig,
+		ListConfig: args.ListConfig,
+	}
 	if err := seymour.ValidateFilter(filter); err != nil {
 		return seymour.Filter{}, err
 	}
+
+	// Store only the selected configuration, not the entire domain model.
 	config, err := filterConfig(args.Type, args.AIConfig, args.ListConfig)
 	if err != nil {
 		return seymour.Filter{}, filterInternalError("encode filter config", err)
 	}
+
+	// Let the unique constraint arbitrate concurrent creates, including disabled filters.
 	filter.ID = uuid.NewString() + filterNamespace
 	const q = `INSERT INTO filters (id, user_id, type, enabled, config) VALUES (?, ?, ?, ?, ?);`
 	if _, err = r.db.ExecContext(ctx, q, filter.ID, userID, args.Type, args.Enabled, config); err != nil {
@@ -121,37 +149,59 @@ func (r Repo) CreateFilter(ctx context.Context, userID string, args seymour.Crea
 		}
 		return seymour.Filter{}, filterInternalError("insert filter", err)
 	}
+
+	// Read back database-generated timestamps and the persisted configuration.
 	return r.Filter(ctx, userID, filter.ID)
 }
 
 // UpdateFilter fully replaces a user's filter configuration and enabled state.
 func (r Repo) UpdateFilter(ctx context.Context, userID, id string, args seymour.UpdateFilterArgs) (seymour.Filter, error) {
+	// Resolve ownership and the immutable type before validating the replacement.
 	current, err := r.Filter(ctx, userID, id)
 	if err != nil {
 		return seymour.Filter{}, err
 	}
-	filter := seymour.Filter{ID: id, UserID: userID, Type: current.Type, Enabled: args.Enabled, AIConfig: args.AIConfig, ListConfig: args.ListConfig}
+
+	// Validate the full replacement against the existing type without changing the row.
+	filter := seymour.Filter{
+		ID:      id,
+		UserID:  userID,
+		Type:    current.Type,
+		Enabled: args.Enabled,
+
+		AIConfig:   args.AIConfig,
+		ListConfig: args.ListConfig,
+	}
 	if err := seymour.ValidateFilter(filter); err != nil {
 		return seymour.Filter{}, err
 	}
+
+	// Encode the replacement independently of immutable identity and creation fields.
 	config, err := filterConfig(current.Type, args.AIConfig, args.ListConfig)
 	if err != nil {
 		return seymour.Filter{}, filterInternalError("encode filter config", err)
 	}
+
+	// Replace enabled state and config together while advancing the update timestamp.
 	const q = `UPDATE filters SET enabled = ?, config = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ? AND id = ?;`
 	if _, err := r.db.ExecContext(ctx, q, args.Enabled, config, userID, id); err != nil {
 		return seymour.Filter{}, filterInternalError("update filter", err)
 	}
+
+	// A read-back distinguishes a missing row from a successful unchanged update.
 	return r.Filter(ctx, userID, id)
 }
 
 // DeleteFilter deletes a filter only when it belongs to userID.
 func (r Repo) DeleteFilter(ctx context.Context, userID, id string) error {
+	// Delete only the owner's row, leaving other users' filters untouched.
 	const q = `DELETE FROM filters WHERE user_id = ? AND id = ?;`
 	result, err := r.db.ExecContext(ctx, q, userID, id)
 	if err != nil {
 		return filterInternalError("delete filter", err)
 	}
+
+	// Zero deleted rows means the filter is absent or belongs to another user.
 	count, err := result.RowsAffected()
 	if err != nil {
 		return filterInternalError("check deleted filter", err)

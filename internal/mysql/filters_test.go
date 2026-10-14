@@ -21,7 +21,10 @@ func TestCreateFilterRoundTripsConfigurations(t *testing.T) {
 	repo := testRepo(t)
 	ctx := t.Context()
 	aiConfig := &seymour.AIConfig{Prompt: "Quote: \"hello\"; café 🐈\nsecond line"}
-	listConfig := &seymour.ListConfig{Allowlist: []string{"quoted \"value\"", "日本語\nline"}, Disallowlist: []string{"β"}}
+	listConfig := &seymour.ListConfig{
+		Allowlist:    []string{"quoted \"value\"", "日本語\nline"},
+		Disallowlist: []string{"β"},
+	}
 
 	// Create both supported types for the same owner, with different enabled states.
 	ai, err := repo.CreateFilter(ctx, "owner", seymour.CreateFilterArgs{Type: seymour.FilterTypeAI, Enabled: true, AIConfig: aiConfig})
@@ -35,6 +38,8 @@ func TestCreateFilterRoundTripsConfigurations(t *testing.T) {
 		assert.False(t, filter.CreatedAt.IsZero())
 		assert.False(t, filter.UpdatedAt.IsZero())
 	}
+
+	// Config content and enabled state are independent of storage-generated metadata.
 	assert.True(t, ai.Enabled)
 	assert.False(t, list.Enabled)
 	assert.Equal(t, aiConfig, ai.AIConfig)
@@ -62,7 +67,7 @@ func TestFiltersListIsUserScopedAndOrdered(t *testing.T) {
 	empty, err := repo.Filters(ctx, "nobody")
 	require.NoError(t, err)
 
-	// Ordering is independent of enabled state, and listings never include another tenant's filters.
+	// The owner's rows follow creation time and ID, independently of enabled state.
 	require.Len(t, filters, 2)
 	expected := []seymour.Filter{list, ai}
 	sort.Slice(expected, func(i, j int) bool {
@@ -72,6 +77,8 @@ func TestFiltersListIsUserScopedAndOrdered(t *testing.T) {
 		return expected[i].CreatedAt.Before(expected[j].CreatedAt)
 	})
 	assert.Equal(t, []string{expected[0].ID, expected[1].ID}, []string{filters[0].ID, filters[1].ID})
+
+	// Each listing contains exactly its user's filters, including disabled configurations.
 	assert.ElementsMatch(t, expected, filters)
 	assert.Equal(t, []seymour.Filter{other}, otherFilters)
 	assert.Empty(t, empty)
@@ -84,12 +91,16 @@ func TestFilterReadUpdateDeleteAreUserScoped(t *testing.T) {
 	created, err := repo.CreateFilter(ctx, "owner", seymour.CreateFilterArgs{Type: seymour.FilterTypeAI, Enabled: true, AIConfig: &seymour.AIConfig{Prompt: "original"}})
 	require.NoError(t, err)
 
-	// Owner reads succeed while another tenant cannot read, update, or delete the row.
+	// The owner can read the complete configuration.
 	found, err := repo.Filter(ctx, "owner", created.ID)
 	require.NoError(t, err)
 	assert.Equal(t, created, found)
+
+	// Another tenant's read receives the same not-found response as an absent filter.
 	_, err = repo.Filter(ctx, "intruder", created.ID)
 	assertNotFound(t, err)
+
+	// Unauthorized replacement and deletion cannot reach the owner's row.
 	_, err = repo.UpdateFilter(ctx, "intruder", created.ID, seymour.UpdateFilterArgs{AIConfig: &seymour.AIConfig{Prompt: "stolen"}})
 	assertNotFound(t, err)
 	assertNotFound(t, repo.DeleteFilter(ctx, "intruder", created.ID))
@@ -114,6 +125,8 @@ func TestDeleteFilterRemovesOwnedRow(t *testing.T) {
 	_, err = repo.UpdateFilter(ctx, "owner", "missing-fl", seymour.UpdateFilterArgs{AIConfig: &seymour.AIConfig{Prompt: "x"}})
 	assertNotFound(t, err)
 	assertNotFound(t, repo.DeleteFilter(ctx, "owner", "missing-fl"))
+
+	// The deleted identity remains absent for reads, replacements, and repeated deletion.
 	_, err = repo.Filter(ctx, "owner", created.ID)
 	assertNotFound(t, err)
 	_, err = repo.UpdateFilter(ctx, "owner", created.ID, seymour.UpdateFilterArgs{AIConfig: &seymour.AIConfig{Prompt: "x"}})
@@ -283,9 +296,11 @@ func TestFiltersRejectCorruptedStoredConfiguration(t *testing.T) {
 	_, err = testDB.ExecContext(t.Context(), `UPDATE filters SET config = ? WHERE id = ?`, `{"prompt":42}`, created.ID)
 	require.NoError(t, err)
 
-	// Reading corrupted config is surfaced as an internal server error.
+	// A single-row lookup rejects configuration that cannot be decoded into the declared type.
 	_, err = repo.Filter(t.Context(), "owner", created.ID)
 	assertStatus(t, err, http.StatusInternalServerError)
+
+	// Collection reads also fail rather than returning a partially decoded listing.
 	_, err = repo.Filters(t.Context(), "owner")
 	assertStatus(t, err, http.StatusInternalServerError)
 }
