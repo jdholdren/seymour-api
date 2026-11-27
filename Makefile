@@ -1,4 +1,4 @@
-.PHONY: start yac up up-d build rb-api rb-worker gen-openapi lint install-hooks
+.PHONY: start yac up up-d build rb-api rb-worker lint install-hooks
 
 test:
 	go test ./...
@@ -8,9 +8,6 @@ lint:
 
 install-hooks:
 	git config core.hooksPath .githooks
-
-gen-openapi:
-	go run ./cmd/genopenapi -out openapi.yaml
 
 up:
 	docker compose up

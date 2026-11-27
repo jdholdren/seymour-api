@@ -48,7 +48,6 @@ Two binaries, both in `cmd/`:
 
 - **`cmd/api`** — REST API server (port 4444). HTTP handlers in `internal/api/`. Uses Gorilla Mux for routing.
 - **`cmd/worker`** — Temporal workflow worker. Workflows and activities in `internal/worker/`. Read `internal/worker/AGENTS.md` for shared worker conventions.
-- **`cmd/genopenapi`** — Generates the OpenAPI spec from `apis/v1`.
 
 Packages:
 
@@ -59,7 +58,7 @@ Packages:
 - **`internal/api`** — HTTP handlers, auth middleware, OAuth. See `internal/api/AGENTS.md`.
 - **`internal/migrations`** — Embedded SQL migration files, run via `golang-migrate`. Read `internal/mysql/AGENTS.md` for shared database conventions.
 - **`internal/logger`** — Shared logging setup.
-- **`apis/v1`** — Request/response types shared between `internal/api` and `cmd/genopenapi`. Read `internal/api/AGENTS.md` for shared API conventions.
+- **`apis/v1`** — Request/response types shared between `internal/api` and API clients. Read `internal/api/AGENTS.md` for shared API conventions.
 
 ## Core Dev Loop
 
