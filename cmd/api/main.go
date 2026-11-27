@@ -13,8 +13,6 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/oklog/run"
 	"github.com/sethvargo/go-envconfig"
-	"github.com/sethvargo/go-retry"
-	"go.temporal.io/sdk/client"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/github"
 
@@ -26,15 +24,12 @@ import (
 	"github.com/jdholdren/seymour/internal/logger"
 	"github.com/jdholdren/seymour/internal/migrations"
 	seymysql "github.com/jdholdren/seymour/internal/mysql"
-	"github.com/jdholdren/seymour/internal/worker"
 )
 
 type config struct {
-	Database         string `env:"DATABASE, required"`
-	TemporalHostPort string `env:"TEMPORAL_HOST_PORT, required"`
-
-	Port int    `env:"PORT, default=4444"`
-	Cors string `env:"CORS"`
+	Database string `env:"DATABASE, required"`
+	Port     int    `env:"PORT, default=4444"`
+	Cors     string `env:"CORS"`
 
 	FrontendURL string `env:"FRONTEND_URL, required"` // Where the browser is sent after GitHub OAuth completes, e.g. http://localhost:3000
 
@@ -73,31 +68,6 @@ func main() {
 
 	repo := seymysql.New(dbx)
 
-	// Retry until temporal is ready, capped at 15s
-	temporalCtx, temporalCancel := context.WithTimeout(ctx, 15*time.Second)
-	defer temporalCancel()
-
-	var temporalCli client.Client
-	if err := retry.Fibonacci(temporalCtx, 1*time.Second, func(ctx context.Context) error {
-		c, err := client.Dial(client.Options{
-			HostPort: cfg.TemporalHostPort,
-		})
-		if err != nil {
-			return retry.RetryableError(err)
-		}
-		temporalCli = c
-
-		return nil
-	}); err != nil {
-		log.Fatalln("Unable to create Temporal client:", err)
-	}
-
-	// Ensure that the default queue is there:
-	// Ensure that the default queue is there:
-	if err := worker.EnsureDefaultNamespace(ctx, temporalCli.WorkflowService()); err != nil {
-		log.Fatalln("error ensuring default namespace:", err)
-	}
-
 	oauthCfg := &oauth2.Config{
 		ClientID:     cfg.GithubClientID,
 		ClientSecret: cfg.GithubClientSecret,
@@ -127,7 +97,6 @@ func main() {
 		repo,
 		repo,
 		repo,
-		temporalCli,
 		oauthCfg,
 		sessionHashKey,
 		sessionBlockKey,

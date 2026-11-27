@@ -1,4 +1,4 @@
 // Package seymour holds Seymour's domain models and the Service interfaces
-// (FeedService, FilterService, TimelineService, UserService) that internal/mysql implements
-// and internal/api and internal/worker depend on.
+// (FeedService, FilterService, SubscriptionService, UserService) that internal/mysql implements
+// and internal/api depend on.
 package seymour

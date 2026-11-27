@@ -21,7 +21,7 @@ func (s Server) handleViewer(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	subs, err := s.timeline.AllSubscriptions(ctx, userID)
+	subs, err := s.subscriptions.AllSubscriptions(ctx, userID)
 	if err != nil {
 		return err
 	}

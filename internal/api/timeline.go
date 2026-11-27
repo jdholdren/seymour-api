@@ -14,7 +14,7 @@ import (
 
 	apiv1 "github.com/jdholdren/seymour/apis/v1"
 	"github.com/jdholdren/seymour/internal/seymour"
-	"github.com/jdholdren/seymour/internal/worker"
+	"github.com/jdholdren/seymour/internal/sync"
 )
 
 func validatePostSubscriptionReq(req apiv1.PostSubscriptionReq) error {
@@ -68,21 +68,40 @@ func (s Server) postSusbcriptions(w http.ResponseWriter, r *http.Request) error 
 		return err
 	}
 
-	// Start the workflow to create it and verify it
-	subscriptionID, err := worker.SubscribeToFeed(ctx, s.tempCli, body.FeedURL, userID)
-	var seyErr *seymour.Error
-	if errors.As(err, &seyErr) {
-		return seyErr
+	// Reuse the shared feed cache, ingest it before adding the subscription,
+	// then persist the user's subscription synchronously.
+	feed, err := s.feeds.InsertFeed(ctx, body.FeedURL)
+	if errors.Is(err, seymour.ErrConflict) {
+		feed, err = s.feeds.FeedByURL(ctx, body.FeedURL)
 	}
 	if err != nil {
 		return err
 	}
 
-	subscription, err := s.timeline.Subscription(ctx, subscriptionID)
+	parsedFeed, entries, err := sync.Feed(ctx, feed.ID, feed.URL)
 	if err != nil {
 		return err
 	}
-	feed, err := s.feeds.Feed(ctx, subscription.FeedID)
+	if err := s.feeds.InsertEntries(ctx, entries); err != nil {
+		return err
+	}
+	if parsedFeed.Title != nil && parsedFeed.Description != nil {
+		if err := s.feeds.UpdateFeed(ctx, feed.ID, seymour.UpdateFeedArgs{
+			Title: *parsedFeed.Title, Description: *parsedFeed.Description, LastSynced: time.Now(),
+		}); err != nil {
+			return err
+		}
+	}
+	subscriptionID, err := s.subscriptions.CreateSubscription(ctx, userID, feed.ID)
+	if err != nil {
+		return err
+	}
+
+	subscription, err := s.subscriptions.Subscription(ctx, subscriptionID)
+	if err != nil {
+		return err
+	}
+	feed, err = s.feeds.Feed(ctx, subscription.FeedID)
 	if err != nil {
 		return err
 	}
@@ -99,7 +118,7 @@ func (s Server) getSusbcriptions(w http.ResponseWriter, r *http.Request) error {
 		return seymour.E("forbidden", http.StatusForbidden)
 	}
 
-	subs, err := s.timeline.AllSubscriptions(ctx, userID)
+	subs, err := s.subscriptions.AllSubscriptions(ctx, userID)
 	if err != nil {
 		return err
 	}
@@ -125,7 +144,7 @@ func (s Server) deleteSubscription(w http.ResponseWriter, r *http.Request) error
 		id  = mux.Vars(r)["subscriptionID"]
 	)
 
-	sub, err := s.timeline.Subscription(ctx, id)
+	sub, err := s.subscriptions.Subscription(ctx, id)
 	if err != nil {
 		return err
 	}
@@ -133,139 +152,12 @@ func (s Server) deleteSubscription(w http.ResponseWriter, r *http.Request) error
 		return seymour.E("forbidden", http.StatusForbidden)
 	}
 
-	if err := s.timeline.DeleteSubscription(ctx, id); err != nil {
+	if err := s.subscriptions.DeleteSubscription(ctx, id); err != nil {
 		return err
 	}
 
 	w.WriteHeader(http.StatusNoContent)
 	return nil
-}
-
-// validTimelineEntryStatuses are the values getTimeline accepts for its
-// ?status= filter.
-var validTimelineEntryStatuses = map[seymour.TimelineEntryStatus]bool{
-	seymour.TimelineEntryStatusRequiresJudgement: true,
-	seymour.TimelineEntryStatusApproved:          true,
-	seymour.TimelineEntryStatusRejected:          true,
-}
-
-func (s Server) getTimeline(w http.ResponseWriter, r *http.Request) error {
-	var (
-		ctx    = r.Context()
-		userID = mux.Vars(r)["userID"]
-		query  = r.URL.Query()
-		feedID = query.Get("feed_id")
-		status = seymour.TimelineEntryStatus(query.Get("status"))
-	)
-	if userID != ctxUserID(ctx) {
-		return seymour.E("forbidden", http.StatusForbidden)
-	}
-	if status != "" && !validTimelineEntryStatuses[status] {
-		return seymour.E(fmt.Sprintf("invalid status: %s", status), http.StatusBadRequest)
-	}
-
-	var fromDate apiv1.Date
-	if v := query.Get("from"); v != "" {
-		d, err := apiv1.ParseDate(v)
-		if err != nil {
-			return seymour.E(fmt.Sprintf("invalid from: %s", err), http.StatusBadRequest)
-		}
-		fromDate = d
-	}
-	var toDate apiv1.Date
-	if v := query.Get("to"); v != "" {
-		d, err := apiv1.ParseDate(v)
-		if err != nil {
-			return seymour.E(fmt.Sprintf("invalid to: %s", err), http.StatusBadRequest)
-		}
-		toDate = d
-	}
-
-	// Parse pagination parameters
-	limit, offset := parsePaginationParams(r, 20, 100) // default=20, max=100
-
-	args := seymour.TimelineEntriesArgs{
-		UserID:   userID,
-		Status:   status,
-		FeedID:   feedID,
-		FromDate: fromDate,
-		ToDate:   toDate,
-		Limit:    uint64(limit),
-		Offset:   uint64(offset),
-	}
-
-	// Get count and entries
-	total, err := s.timeline.CountTimelineEntries(ctx, args)
-	if err != nil {
-		return err
-	}
-
-	tlEnts, err := s.timeline.TimelineEntries(ctx, args)
-	if err != nil {
-		return err
-	}
-
-	feedEntIDs := make([]string, 0, len(tlEnts))
-	for _, ent := range tlEnts {
-		feedEntIDs = append(feedEntIDs, ent.FeedEntryID)
-	}
-
-	feedEnts, err := s.feeds.Entries(ctx, feedEntIDs)
-	if err != nil {
-		return err
-	}
-
-	feedIDs := make([]string, 0, len(feedEnts))
-	for _, ent := range feedEnts {
-		feedIDs = append(feedIDs, ent.FeedID)
-	}
-
-	feeds, err := s.feeds.Feeds(ctx, feedIDs)
-	if err != nil {
-		return err
-	}
-
-	// Turn into a maps for fast lookup
-	var (
-		feedByID        = make(map[string]seymour.Feed)
-		feedEntriesByID = make(map[string]seymour.FeedEntry)
-	)
-	for _, feed := range feeds {
-		feedByID[feed.ID] = feed
-	}
-	for _, feedEntry := range feedEnts {
-		feedEntriesByID[feedEntry.ID] = feedEntry
-	}
-
-	// Build timeline entries
-	items := make([]apiv1.TimelineEntry, 0, len(tlEnts))
-	for _, tlEntry := range tlEnts {
-		var (
-			feedEntry = feedEntriesByID[tlEntry.FeedEntryID]
-			feed      = feedByID[feedEntry.FeedID]
-			feedTitle string
-		)
-		if feed.Title != nil {
-			feedTitle = *feed.Title
-		}
-
-		items = append(items, apiv1.TimelineEntry{
-			EntryID:     feedEntry.ID,
-			FeedName:    feedTitle,
-			Title:       feedEntry.Title,
-			Description: feedEntry.Description,
-			URL:         feedEntry.Link,
-			PublishDate: feedEntry.PublishTime,
-		})
-	}
-
-	// Build pagination metadata
-	resp := apiv1.TimelineResp{
-		Items:      items,
-		Pagination: calculatePaginationMeta(limit, offset, total),
-	}
-
-	return writeJSON(w, http.StatusOK, resp)
 }
 
 func (s Server) getFeedEntry(w http.ResponseWriter, r *http.Request) error {
