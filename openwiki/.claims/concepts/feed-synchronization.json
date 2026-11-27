@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:a0a68715891430df380ee63f4da8861f80d4705e5da57618b21e1cf89686942e",
+  "claims": [
+    {
+      "id": "claim_aedbe3bcff794176809a5d4614031eee",
+      "statement": "Feed records are shared by URL, and on a feed-insert conflict subscription creation loads the existing feed and continues synchronization before creating the user's subscription.",
+      "evidence": [
+        {
+          "resource": "repo://internal/api/timeline.go",
+          "version": "repo-file-v1:sha256:7a4e7833e19334b4b6fc82c10fc1d4386e01a60d533df308695c5f9973b0738f"
+        },
+        {
+          "resource": "repo://internal/migrations/202501010_initial_schema.up.sql",
+          "version": "repo-file-v1:sha256:8edac7f2d88aa8e293aafb9c15e15bcc780190b4f3a4464d5642992cdf188afe"
+        }
+      ]
+    },
+    {
+      "id": "claim_e2b43844af2441dead25e7acbf4b31d4",
+      "statement": "The feed parser selects Atom when the first XML start element is feed and otherwise uses RSS parsing; it rejects non-200 responses and uses a three-second HTTP client timeout.",
+      "evidence": [
+        {
+          "resource": "repo://internal/sync/sync.go",
+          "version": "repo-file-v1:sha256:178889aac084e0e1e98b5484a3ab2025e3ad4bf46796f15b289822041c8257a7"
+        }
+      ]
+    },
+    {
+      "id": "claim_0a26f27964394166a7621ca660c1b221",
+      "statement": "RSS/Atom parsing normalizes entries into domain FeedEntry values, sanitizes textual fields, and MySQL insertion ignores duplicate entries based on the unique GUID constraint.",
+      "evidence": [
+        {
+          "resource": "repo://internal/migrations/202501010_initial_schema.up.sql",
+          "version": "repo-file-v1:sha256:8edac7f2d88aa8e293aafb9c15e15bcc780190b4f3a4464d5642992cdf188afe"
+        },
+        {
+          "resource": "repo://internal/mysql/feeds.go",
+          "version": "repo-file-v1:sha256:ca8b092effd518ca308f59a33e64ea53dc83e0a3df4c8e342cc23d053a43d8b5"
+        },
+        {
+          "resource": "repo://internal/sync/sync.go",
+          "version": "repo-file-v1:sha256:178889aac084e0e1e98b5484a3ab2025e3ad4bf46796f15b289822041c8257a7"
+        }
+      ]
+    },
+    {
+      "id": "claim_ff62ce16251f47bbbbb67793e447e7c2",
+      "statement": "The API performs feed fetching, parsing, and entry persistence synchronously before creating a subscription, so failures in those earlier operations prevent subscription creation.",
+      "evidence": [
+        {
+          "resource": "repo://internal/api/timeline.go",
+          "version": "repo-file-v1:sha256:7a4e7833e19334b4b6fc82c10fc1d4386e01a60d533df308695c5f9973b0738f"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.9.0",
+    "at": "2026-11-27T18:40:11.523Z"
+  }
+}

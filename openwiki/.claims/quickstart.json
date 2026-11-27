@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:9a62d6ed81be26e2d74bd4278236d94f1ccfe617b47be09d77078bd3acb6f737",
+  "claims": [
+    {
+      "id": "claim_a621923c7367451b9175ac202eb6abc7",
+      "statement": "The Go API executable is cmd/api and its Docker Compose development stack runs an API service alongside MySQL.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/api/main.go",
+          "version": "repo-file-v1:sha256:63eb9f7c3e4f7fb646fa4624ea04db8bf29de591a1d761a4cb3bcea0c351a332"
+        },
+        {
+          "resource": "repo://docker-compose.yaml",
+          "version": "repo-file-v1:sha256:7406a5c2b7ff91f6f1acd051c9d77a5af4515008eb12b36069f81f5b3cfdbb7e"
+        }
+      ]
+    },
+    {
+      "id": "claim_6893ac8bfbcf41aa9b8662cadbcc73ed",
+      "statement": "The Makefile defines make up-d for detached Compose startup, make rb-api for rebuilding/restarting the API, make test for go test ./..., and make lint for golangci-lint.",
+      "evidence": [
+        {
+          "resource": "repo://Makefile",
+          "version": "repo-file-v1:sha256:312adc8c503fee9ed706fe25aceb38dd6da3db2d157e38d8aa6252aeedb6e49b"
+        }
+      ]
+    },
+    {
+      "id": "claim_927404db843f40f58ba6dda5c9c4b12f",
+      "statement": "The current API router exposes OAuth/viewer, subscription, and feed-entry routes, while filter and work-queue contracts exist without corresponding registered HTTP routes.",
+      "evidence": [
+        {
+          "resource": "repo://internal/api/api.go",
+          "version": "repo-file-v1:sha256:5f6c7ae66e337fc734fa7da9ede854d5ecd6a1df8bdc0582970b6b5365d5d1ec"
+        },
+        {
+          "resource": "repo://internal/seymour/filter.go",
+          "version": "repo-file-v1:sha256:b275f4f28a991e825964f849f1db179060bfca273a2711c529b058e5d3a5687d"
+        },
+        {
+          "resource": "repo://internal/seymour/work_items.go",
+          "version": "repo-file-v1:sha256:ca46fd8d9360352c5dcc4840d945d6f79860d6ef78cc2f14563807cb71314251"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.9.0",
+    "at": "2026-11-27T18:34:43.213Z"
+  }
+}

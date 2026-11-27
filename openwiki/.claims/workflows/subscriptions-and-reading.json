@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:f60e768038dfc508ba76d5c8f2db3d92927c317cd4dce98e1f1304b5a8895aa5",
+  "claims": [
+    {
+      "id": "claim_c756b01acbc9475db3517a8fa422645b",
+      "statement": "Subscription creation checks the authenticated user against the path user, fetches/parses and persists the feed before creating the subscription, then returns the joined subscription/feed response.",
+      "evidence": [
+        {
+          "resource": "repo://internal/api/timeline.go",
+          "version": "repo-file-v1:sha256:7a4e7833e19334b4b6fc82c10fc1d4386e01a60d533df308695c5f9973b0738f"
+        }
+      ]
+    },
+    {
+      "id": "claim_6947645f02a24fa68ad922593b662a0d",
+      "statement": "Subscription listing is user-scoped and joins feed metadata into SubscriptionResp; deletion checks the loaded subscription's owner against the authenticated user before deleting.",
+      "evidence": [
+        {
+          "resource": "repo://apis/v1/subscriptions.go",
+          "version": "repo-file-v1:sha256:86753a97b101ebac067a94f2fe5d6127a5d137123a5412a2a46dd3187c731c89"
+        },
+        {
+          "resource": "repo://internal/api/timeline.go",
+          "version": "repo-file-v1:sha256:7a4e7833e19334b4b6fc82c10fc1d4386e01a60d533df308695c5f9973b0738f"
+        }
+      ]
+    },
+    {
+      "id": "claim_cae5cc8df48a4e63b0d34f5373256c66",
+      "statement": "Authenticated callers can read any shared feed entry; a cache miss fetches the entry link, extracts readable content, sanitizes it, and caches the response by entry ID in a process-local LRU.",
+      "evidence": [
+        {
+          "resource": "repo://internal/api/AGENTS.md",
+          "version": "repo-file-v1:sha256:2c3ce230c7629e2c96cc7dffd9245e8c731de45fa907d7da0e5e25fc56285986"
+        },
+        {
+          "resource": "repo://internal/api/api.go",
+          "version": "repo-file-v1:sha256:5f6c7ae66e337fc734fa7da9ede854d5ecd6a1df8bdc0582970b6b5365d5d1ec"
+        },
+        {
+          "resource": "repo://internal/api/timeline.go",
+          "version": "repo-file-v1:sha256:7a4e7833e19334b4b6fc82c10fc1d4386e01a60d533df308695c5f9973b0738f"
+        }
+      ]
+    },
+    {
+      "id": "claim_3f8ba8aa3b324a69a0fce9b052d4e2c1",
+      "statement": "Feed-entry responses expose the entry identity, feed ID, URL, title, description, creation timestamp, and reader content.",
+      "evidence": [
+        {
+          "resource": "repo://apis/v1/feedentries.go",
+          "version": "repo-file-v1:sha256:eede4cad6c0dbc56dc3d6a75cf3c6424b1126a130a1c8599fc4f87beb00f04f7"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.9.0",
+    "at": "2026-11-27T18:34:43.213Z"
+  }
+}

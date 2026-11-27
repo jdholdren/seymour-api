@@ -1,0 +1,94 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:e1b2bb3ab3f1cd930d39b87042c87dfaddfd3fa082c24fbbf2f1223e0443dff1",
+  "claims": [
+    {
+      "id": "claim_29b816591c71460a923c8b6614fa88d3",
+      "statement": "The API depends on domain service interfaces in internal/seymour, while the MySQL Repo implements those interfaces and is wired into the server at startup.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/api/main.go",
+          "version": "repo-file-v1:sha256:63eb9f7c3e4f7fb646fa4624ea04db8bf29de591a1d761a4cb3bcea0c351a332"
+        },
+        {
+          "resource": "repo://internal/mysql/mysql.go",
+          "version": "repo-file-v1:sha256:440377d6f8fa1fb413e02785bfbe6ac215ddd9f7fecaaa6afc724b25163ad380"
+        },
+        {
+          "resource": "repo://internal/seymour/seymour.go",
+          "version": "repo-file-v1:sha256:88600a6ede2ffb1dde1a72580321a3bf8b903a7070cf53c7722ae6dff0d05eed"
+        }
+      ]
+    },
+    {
+      "id": "claim_f04488e2e16e4aa1903341b93051e8ed",
+      "statement": "The domain error type carries an HTTP status and optional field details, and its JSON encoding exposes message, details, and status for API responses.",
+      "evidence": [
+        {
+          "resource": "repo://internal/seymour/errors.go",
+          "version": "repo-file-v1:sha256:4fb4552febfa1caf34b32bd7aa693ce8d75b859fe8456ae965e799715ee9be96"
+        }
+      ]
+    },
+    {
+      "id": "claim_5ba3aba9ba6146ef8d8559766728d922",
+      "statement": "MySQL account creation creates the user and identity-provider login in one transaction and handles a concurrent uniqueness winner by rolling back and reading the existing records.",
+      "evidence": [
+        {
+          "resource": "repo://internal/mysql/users.go",
+          "version": "repo-file-v1:sha256:51263757019ac53333cf5574f0645872f5a4e79a823aa7eecaaab85da11e626f"
+        }
+      ]
+    },
+    {
+      "id": "claim_ede5025d7a8c4ee098ae9bf77001bab7",
+      "statement": "Startup embeds and applies ordered SQL migrations against the configured MySQL database before constructing the repository and serving requests.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/api/main.go",
+          "version": "repo-file-v1:sha256:63eb9f7c3e4f7fb646fa4624ea04db8bf29de591a1d761a4cb3bcea0c351a332"
+        },
+        {
+          "resource": "repo://internal/migrations/migrations.go",
+          "version": "repo-file-v1:sha256:98a22fd08bdb459c19624f354c8780000b9415ea7f2c0cbacd1e066019c3e4c8"
+        }
+      ]
+    },
+    {
+      "id": "claim_f7d6d99e289c420b8676a59bf96ada55",
+      "statement": "The initial schema uses uniqueness constraints for feed URLs, entry GUIDs, user-feed subscriptions, and provider identities; the work-items schema permits completed history while enforcing uniqueness for incomplete type/key pairs.",
+      "evidence": [
+        {
+          "resource": "repo://internal/migrations/202501010_initial_schema.up.sql",
+          "version": "repo-file-v1:sha256:8edac7f2d88aa8e293aafb9c15e15bcc780190b4f3a4464d5642992cdf188afe"
+        },
+        {
+          "resource": "repo://internal/migrations/20261127000000_work_items.up.sql",
+          "version": "repo-file-v1:sha256:f54c866499db5e851a826123d65bd3ea3cb35f220b220bde974e79bf7fe40098"
+        }
+      ]
+    },
+    {
+      "id": "claim_d15352a00e8146678fb5725f3978c8a1",
+      "statement": "The baseline schema includes user-scoped filters with one row per user and type, JSON object configuration, supported-type and boolean checks; filter configuration variants are also validated by the domain/repository code.",
+      "evidence": [
+        {
+          "resource": "repo://internal/migrations/202501010_initial_schema.up.sql",
+          "version": "repo-file-v1:sha256:8edac7f2d88aa8e293aafb9c15e15bcc780190b4f3a4464d5642992cdf188afe"
+        },
+        {
+          "resource": "repo://internal/mysql/filters.go",
+          "version": "repo-file-v1:sha256:4175b8209ee0b2dab2dde87966f1d0b6203bead23af2e4abb219f90950300adf"
+        },
+        {
+          "resource": "repo://internal/seymour/filter.go",
+          "version": "repo-file-v1:sha256:b275f4f28a991e825964f849f1db179060bfca273a2711c529b058e5d3a5687d"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.9.0",
+    "at": "2026-11-27T18:40:11.523Z"
+  }
+}

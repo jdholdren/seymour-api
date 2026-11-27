@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:90c2dce4e50d6941e87fe703df3dee869866a9f8c6169042b3673745c3811243",
+  "claims": [
+    {
+      "id": "claim_c906d9669a904945bc8ccff185d12f9d",
+      "statement": "At startup, cmd/api processes configuration, opens MySQL, applies migrations, builds the MySQL repository, and supplies it to the HTTP server's domain-service dependencies.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/api/main.go",
+          "version": "repo-file-v1:sha256:63eb9f7c3e4f7fb646fa4624ea04db8bf29de591a1d761a4cb3bcea0c351a332"
+        }
+      ]
+    },
+    {
+      "id": "claim_5cc86c16a3504b169f0dbedc6ccaab46",
+      "statement": "NewServer separates public viewer/OAuth/logout routes from routes protected by session middleware, and protected handlers access the authenticated user ID through request context.",
+      "evidence": [
+        {
+          "resource": "repo://internal/api/api.go",
+          "version": "repo-file-v1:sha256:5f6c7ae66e337fc734fa7da9ede854d5ecd6a1df8bdc0582970b6b5365d5d1ec"
+        },
+        {
+          "resource": "repo://internal/api/auth.go",
+          "version": "repo-file-v1:sha256:8a2efa02f1d57671a19ecf68cbaf8d233c100808011c4cefa08e1579ab34d690"
+        }
+      ]
+    },
+    {
+      "id": "claim_5768257e2bd24474a6b9cf86e3c26fbf",
+      "statement": "Subscription creation synchronously reuses or inserts a shared feed, parses and persists its entries, updates feed metadata when available, and then creates a user-scoped subscription.",
+      "evidence": [
+        {
+          "resource": "repo://internal/api/timeline.go",
+          "version": "repo-file-v1:sha256:7a4e7833e19334b4b6fc82c10fc1d4386e01a60d533df308695c5f9973b0738f"
+        },
+        {
+          "resource": "repo://internal/sync/sync.go",
+          "version": "repo-file-v1:sha256:178889aac084e0e1e98b5484a3ab2025e3ad4bf46796f15b289822041c8257a7"
+        }
+      ]
+    },
+    {
+      "id": "claim_c3cd5de9ea174119b69ab47133f86ac9",
+      "statement": "Seymour implements filter and work-queue domain and MySQL contracts, but the current HTTP router does not register routes for those services.",
+      "evidence": [
+        {
+          "resource": "repo://internal/api/api.go",
+          "version": "repo-file-v1:sha256:5f6c7ae66e337fc734fa7da9ede854d5ecd6a1df8bdc0582970b6b5365d5d1ec"
+        },
+        {
+          "resource": "repo://internal/seymour/filter.go",
+          "version": "repo-file-v1:sha256:b275f4f28a991e825964f849f1db179060bfca273a2711c529b058e5d3a5687d"
+        },
+        {
+          "resource": "repo://internal/seymour/work_items.go",
+          "version": "repo-file-v1:sha256:ca46fd8d9360352c5dcc4840d945d6f79860d6ef78cc2f14563807cb71314251"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.9.0",
+    "at": "2026-11-27T18:34:43.213Z"
+  }
+}

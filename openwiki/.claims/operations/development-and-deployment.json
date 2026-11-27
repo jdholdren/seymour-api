@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:9b55a428c8c549890bfb1b30b512fa3e2e2213f840428ff61bd19437e0f732cf",
+  "claims": [
+    {
+      "id": "claim_5ef82df2e0e646b7b01b412c865f65fa",
+      "statement": "The Compose development stack runs the API and MySQL, persists MySQL data in a named volume, and gates API startup on the MySQL health check.",
+      "evidence": [
+        {
+          "resource": "repo://docker-compose.yaml",
+          "version": "repo-file-v1:sha256:7406a5c2b7ff91f6f1acd051c9d77a5af4515008eb12b36069f81f5b3cfdbb7e"
+        }
+      ]
+    },
+    {
+      "id": "claim_143891cdbf3b4af191937fdb987f6b93",
+      "statement": "The API requires database, frontend, GitHub OAuth, and securecookie key configuration; its port defaults to 4444 and its CORS origin comes from CORS.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/api/main.go",
+          "version": "repo-file-v1:sha256:63eb9f7c3e4f7fb646fa4624ea04db8bf29de591a1d761a4cb3bcea0c351a332"
+        }
+      ]
+    },
+    {
+      "id": "claim_2b3334c2d01d44bb9fa82c849a81ef2c",
+      "statement": "The executable applies embedded migrations before constructing the repository and starting the HTTP server, and its run group attempts graceful shutdown with a ten-second timeout.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/api/main.go",
+          "version": "repo-file-v1:sha256:63eb9f7c3e4f7fb646fa4624ea04db8bf29de591a1d761a4cb3bcea0c351a332"
+        },
+        {
+          "resource": "repo://internal/migrations/migrations.go",
+          "version": "repo-file-v1:sha256:98a22fd08bdb459c19624f354c8780000b9415ea7f2c0cbacd1e066019c3e4c8"
+        }
+      ]
+    },
+    {
+      "id": "claim_1d850a0f42774f9ea7a286d4f15dc1c3",
+      "statement": "The Docker release workflow currently has a worker image matrix target at ./cmd/worker, but the repository's cmd tree contains only cmd/api.",
+      "evidence": [
+        {
+          "resource": "repo://.github/workflows/docker-publish.yml",
+          "version": "repo-file-v1:sha256:e8f86f755d4ccafbccfbaf64874ff2dd2c96e01fd957c01e6b71b02c2a050cd1"
+        },
+        {
+          "resource": "repo://cmd/api/main.go",
+          "version": "repo-file-v1:sha256:63eb9f7c3e4f7fb646fa4624ea04db8bf29de591a1d761a4cb3bcea0c351a332"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.9.0",
+    "at": "2026-11-27T18:34:43.213Z"
+  }
+}
