@@ -23,4 +23,5 @@ var (
 	_ seymour.FeedService         = Repo{}
 	_ seymour.SubscriptionService = Repo{}
 	_ seymour.FilterService       = Repo{}
+	_ seymour.WorkQueueService    = Repo{}
 )
