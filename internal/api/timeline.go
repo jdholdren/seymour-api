@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
 	"time"
 
 	readability "github.com/go-shiori/go-readability"
@@ -215,4 +216,58 @@ func (s Server) getFeedEntry(w http.ResponseWriter, r *http.Request) error {
 	s.entryRespCache.Add(entry.ID, ret)
 
 	return writeJSON(w, http.StatusOK, ret)
+}
+
+func (s Server) getFeedEntries(w http.ResponseWriter, r *http.Request) error {
+	// Feed entries are shared catalog data; authentication is enforced by the
+	// protected router, without restricting access to the feed's subscriber.
+	page, size := 1, 20
+	if value := r.URL.Query().Get("page"); value != "" {
+		parsed, err := strconv.Atoi(value)
+		if err != nil || parsed < 1 {
+			return seymour.E("page must be a positive integer", http.StatusBadRequest)
+		}
+		page = parsed
+	}
+	if value := r.URL.Query().Get("size"); value != "" {
+		parsed, err := strconv.Atoi(value)
+		if err != nil || parsed < 1 || parsed > 100 {
+			return seymour.E("size must be an integer between 1 and 100", http.StatusBadRequest)
+		}
+		size = parsed
+	}
+	if page-1 > int(^uint(0)>>1)/size {
+		return seymour.E("page is too large", http.StatusBadRequest)
+	}
+	offset := (page - 1) * size
+
+	feedID := mux.Vars(r)["feedID"]
+	entries, err := s.feeds.FeedEntries(r.Context(), feedID, offset, size)
+	if err != nil {
+		return err
+	}
+	total, err := s.feeds.CountFeedEntries(r.Context(), feedID)
+	if err != nil {
+		return err
+	}
+
+	resp := apiv1.FeedEntriesResp{
+		Page:    page,
+		Size:    size,
+		Total:   total,
+		Entries: make([]apiv1.FeedEntrySummaryResp, 0, len(entries)),
+	}
+	for _, entry := range entries {
+		resp.Entries = append(resp.Entries, apiv1.FeedEntrySummaryResp{
+			ID:          entry.ID,
+			FeedID:      entry.FeedID,
+			URL:         entry.Link,
+			Title:       entry.Title,
+			Description: entry.Description,
+			CreatedAt:   entry.CreatedAt,
+			PublishTime: entry.PublishTime,
+		})
+	}
+
+	return writeJSON(w, http.StatusOK, resp)
 }

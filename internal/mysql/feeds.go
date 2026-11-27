@@ -161,6 +161,28 @@ func (r Repo) Entries(ctx context.Context, ids []string) ([]seymour.FeedEntry, e
 	return entries, nil
 }
 
+func (r Repo) FeedEntries(ctx context.Context, feedID string, offset, pageSize int) ([]seymour.FeedEntry, error) {
+	const q = `SELECT * FROM feed_entries WHERE feed_id = ? ORDER BY publish_time DESC, id DESC LIMIT ? OFFSET ?;`
+
+	var entries []seymour.FeedEntry
+	if err := r.db.SelectContext(ctx, &entries, q, feedID, pageSize, offset); err != nil {
+		return nil, fmt.Errorf("error fetching feed entries: %s", err)
+	}
+
+	return entries, nil
+}
+
+func (r Repo) CountFeedEntries(ctx context.Context, feedID string) (int, error) {
+	const q = `SELECT COUNT(*) FROM feed_entries WHERE feed_id = ?;`
+
+	var count int
+	if err := r.db.GetContext(ctx, &count, q, feedID); err != nil {
+		return 0, fmt.Errorf("error counting feed entries: %s", err)
+	}
+
+	return count, nil
+}
+
 func (r Repo) InsertEntries(ctx context.Context, entries []seymour.FeedEntry) error {
 	if len(entries) == 0 {
 		return nil

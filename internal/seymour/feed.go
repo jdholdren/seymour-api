@@ -16,6 +16,8 @@ type FeedService interface {
 	FeedIDs(ctx context.Context, offset, pageSize int) ([]string, error)
 	Entry(ctx context.Context, id string) (FeedEntry, error)
 	Entries(ctx context.Context, ids []string) ([]FeedEntry, error)
+	FeedEntries(ctx context.Context, feedID string, offset, pageSize int) ([]FeedEntry, error)
+	CountFeedEntries(ctx context.Context, feedID string) (int, error)
 	InsertEntries(ctx context.Context, entries []FeedEntry) error
 	UpdateFeed(ctx context.Context, id string, args UpdateFeedArgs) error
 }

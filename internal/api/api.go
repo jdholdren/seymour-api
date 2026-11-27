@@ -137,6 +137,7 @@ func NewServer(
 
 	// Reader view
 	protected.HandleFuncE("/feed-entries/{feedEntryID}", srvr.getFeedEntry).Methods(http.MethodGet)
+	protected.HandleFuncE("/feeds/{feedID}/entries", srvr.getFeedEntries).Methods(http.MethodGet)
 
 	return &srvr
 }

@@ -20,6 +20,9 @@ stay a shared global cache (deduped by URL) with no owner.
 - `GET /api/feed-entries/{feedEntryID}` — Full article content via
   go-readability; any authenticated user can read any entry (feeds/entries
   are a shared global cache, not user-owned)
+- `GET /api/feeds/{feedID}/entries?page=1&size=20` — List a page of feed
+  entries; requires a session, but any authenticated user can read any feed's
+  entries. `page` is 1-based; `size` is 1–100 (default 20).
 - `GET /api/oauth-login/gh` — Start GitHub OAuth login; redirects to GitHub.
   Accepts `?s=<path>` for where to send the browser (on `FRONTEND_URL`)
   after login succeeds, defaults to `/`
