@@ -6,6 +6,7 @@ DROP INDEX idx_user_logins_idp_idpid ON user_logins;
 DROP INDEX idx_subscriptions_user_feed ON subscriptions;
 
 -- Drop tables
+DROP TABLE IF EXISTS filters;
 DROP TABLE IF EXISTS user_logins;
 DROP TABLE IF EXISTS users;
 DROP TABLE IF EXISTS subscriptions;
