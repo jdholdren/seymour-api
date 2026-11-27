@@ -7,5 +7,5 @@
 - Errors returned from any `Service` implementation should be a
   `*seymour.Error` (built via `seymour.E(...)`, or a sentinel like
   `seymour.ErrNotFound`/`seymour.ErrConflict`) rather than a plain `error`,
-  so callers (`internal/api`, `internal/worker`) can use `errors.As` to
+  so callers (`internal/api`) can use `errors.As` to
   recover the right HTTP status instead of falling back to a generic 500.

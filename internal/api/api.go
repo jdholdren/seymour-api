@@ -13,7 +13,6 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/gorilla/securecookie"
 	lru "github.com/hashicorp/golang-lru/v2"
-	"go.temporal.io/sdk/client"
 	"golang.org/x/oauth2"
 
 	apiv1 "github.com/jdholdren/seymour/apis/v1"
@@ -70,10 +69,9 @@ type Server struct {
 	fetchClient    *http.Client
 	entryRespCache *lru.Cache[string, apiv1.FeedEntryResp]
 
-	feeds    seymour.FeedService
-	timeline seymour.TimelineService
-	users    seymour.UserService
-	tempCli  client.Client
+	feeds         seymour.FeedService
+	subscriptions seymour.SubscriptionService
+	users         seymour.UserService
 
 	oauthCfg     *oauth2.Config
 	secureCookie *securecookie.SecureCookie
@@ -84,9 +82,8 @@ func NewServer(
 	port int,
 	corsHeader string,
 	feeds seymour.FeedService,
-	timeline seymour.TimelineService,
+	subscriptions seymour.SubscriptionService,
 	users seymour.UserService,
-	temporalCli client.Client,
 	oauthCfg *oauth2.Config,
 	sessionHashKey, sessionBlockKey []byte,
 	frontendURL *url.URL,
@@ -102,9 +99,8 @@ func NewServer(
 		},
 		entryRespCache: cache,
 		feeds:          feeds,
-		timeline:       timeline,
+		subscriptions:  subscriptions,
 		users:          users,
-		tempCli:        temporalCli,
 		oauthCfg:       oauthCfg,
 		secureCookie:   securecookie.New(sessionHashKey, sessionBlockKey),
 		frontendURL:    frontendURL,
@@ -138,9 +134,6 @@ func NewServer(
 	protected.HandleFuncE("/users/{userID}/subscriptions", srvr.postSusbcriptions).Methods(http.MethodPost)
 	protected.HandleFuncE("/users/{userID}/subscriptions", srvr.getSusbcriptions).Methods(http.MethodGet)
 	protected.HandleFuncE("/subscriptions/{subscriptionID}", srvr.deleteSubscription).Methods(http.MethodDelete)
-
-	// Timeline view
-	protected.HandleFuncE("/users/{userID}/timeline", srvr.getTimeline).Methods(http.MethodGet)
 
 	// Reader view
 	protected.HandleFuncE("/feed-entries/{feedEntryID}", srvr.getFeedEntry).Methods(http.MethodGet)

@@ -9,4 +9,3 @@
   so the driver marshals `DATETIME`/`TIMESTAMP` natively into `time.Time`.
 - Migrations are embedded Go files (`internal/migrations`), run via
   `golang-migrate`.
-- Timeline entry statuses: `requires_judgement`, `approved`, `rejected`.

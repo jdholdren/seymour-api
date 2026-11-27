@@ -31,7 +31,7 @@ When editing API handlers or response-building helpers, follow
 
 ## What is Seymour?
 
-Seymour is an RSS feed aggregator with a curated timeline, moving from single-tenant to multi-tenant. Users subscribe to RSS feeds, and a Temporal worker syncs feeds, builds a timeline, then judges entries to decide what gets surfaced. The frontend is a separate project (expected at localhost:3000).
+Seymour is an RSS feed aggregator moving from single-tenant to multi-tenant. Users subscribe to RSS feeds. The frontend is a separate project (expected at localhost:3000).
 
 ## Common Commands
 
@@ -40,21 +40,18 @@ Seymour is an RSS feed aggregator with a curated timeline, moving from single-te
 - `make up-d` — Start all services via docker compose, detached (use this one from an agent session — `make up`/`docker compose up` blocks in the foreground and will hang the session)
 - `make build` — Build all Docker images
 - `make rb-api` — Rebuild and restart only the API service
-- `make rb-worker` — Rebuild and restart only the worker service
 
 ## Directory
 
-Two binaries, both in `cmd/`:
+The API binary lives in `cmd/api`:
 
 - **`cmd/api`** — REST API server (port 4444). HTTP handlers in `internal/api/`. Uses Gorilla Mux for routing.
-- **`cmd/worker`** — Temporal workflow worker. Workflows and activities in `internal/worker/`. Read `internal/worker/AGENTS.md` for shared worker conventions.
 
 Packages:
 
 - **`internal/seymour`** — Domain models and the `Service` interfaces that the rest of the app codes against. See `internal/seymour/AGENTS.md`.
 - **`internal/mysql`** — MySQL implementation of the `Service` interfaces. See `internal/mysql/AGENTS.md`.
 - **`internal/sync`** — RSS feed parsing and sync logic. Parses XML, sanitizes HTML, extracts feed metadata.
-- **`internal/worker`** — Temporal workflows and activities, including feed sync, timeline refresh, and entry judging. See `internal/worker/AGENTS.md`.
 - **`internal/api`** — HTTP handlers, auth middleware, OAuth. See `internal/api/AGENTS.md`.
 - **`internal/migrations`** — Embedded SQL migration files, run via `golang-migrate`. Read `internal/mysql/AGENTS.md` for shared database conventions.
 - **`internal/logger`** — Shared logging setup.
@@ -79,7 +76,7 @@ You should follow these loops during normal iteration of making a change, unless
 
 1. Make sure the server is started via docker compose -d
 2. If not, ask the user to start docker desktop
-3. After making changes, use docker compose to rebuild and restart the changed container (api for api changes, worker for any temporal-related changes, restart both for common changes)
+3. After making changes, use docker compose to rebuild and restart the API container.
 4. Changes are now live
 5. Repeat until behavior is verified
 
@@ -96,13 +93,8 @@ even if later edits in that batch look safe.
 
 Always run it for:
 - Any change to control flow, error handling, or a DB/RPC/HTTP call
-- Function/workflow/activity signature changes, even when every caller is
-  updated to match — signature changes are exactly where argument-order
-  or serialization bugs hide and won't show up as a compile error (e.g.
-  a Temporal call site passing positional args that don't match a
-  struct-typed workflow parameter)
-- Anything affecting wire format: JSON tags, `db` tags, Temporal
-  update/signal/workflow names, or other serialized identifiers
+- Function signature changes, even when every caller is updated to match.
+- Anything affecting wire format: JSON tags, `db` tags, or other serialized identifiers.
 - New or bumped dependencies
 - Config/env/startup wiring changes
 

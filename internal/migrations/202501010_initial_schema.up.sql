@@ -7,9 +7,6 @@
 -- as it stood at the start of the MySQL port):
 --   - TEXT PRIMARY KEY / TEXT UNIQUE columns become VARCHAR, since MySQL/InnoDB
 --     can't build a PK or UNIQUE index over an unbounded TEXT column.
---   - The two SQLite-only partial indexes on timeline_entries.status are
---     dropped; idx_timeline_entries_status and idx_timeline_entries_user_status
---     already cover the same query patterns.
 
 -- Feeds table: stores RSS feed information
 CREATE TABLE feeds (
@@ -45,16 +42,6 @@ CREATE TABLE subscriptions (
 	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- Timeline entries table: curated feed entries for a user's timeline
-CREATE TABLE timeline_entries (
-	id VARCHAR(191) PRIMARY KEY,
-	user_id VARCHAR(191) NOT NULL,
-	feed_entry_id VARCHAR(191) NOT NULL,
-	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-	status TEXT NOT NULL,
-	feed_id VARCHAR(64) NOT NULL
-);
-
 -- Users table: accounts that can sign in, decoupled from any specific IDP
 CREATE TABLE users (
 	id VARCHAR(191) PRIMARY KEY,
@@ -75,10 +62,6 @@ CREATE TABLE user_logins (
 
 -- Indexes for subscriptions
 CREATE UNIQUE INDEX idx_subscriptions_user_feed ON subscriptions(user_id, feed_id);
-
--- Indexes for timeline entries
-CREATE INDEX idx_timeline_entries_status ON timeline_entries(status(191));
-CREATE INDEX idx_timeline_entries_user_status ON timeline_entries(user_id, status(191));
 
 -- Indexes for user logins
 CREATE UNIQUE INDEX idx_user_logins_idp_idpid ON user_logins(idp, idp_id);

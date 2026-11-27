@@ -3,24 +3,14 @@ package seymour
 import (
 	"context"
 	"time"
-
-	apiv1 "github.com/jdholdren/seymour/apis/v1"
 )
 
-// TimelineService provides data operations for the curated timeline and
-// the subscriptions that feed it.
-type TimelineService interface {
-	// CreateSubscription inserts a new subscription, returning its ID.
+// SubscriptionService provides data operations for user feed subscriptions.
+type SubscriptionService interface {
 	CreateSubscription(ctx context.Context, userID, feedID string) (string, error)
 	AllSubscriptions(ctx context.Context, userID string) ([]Subscription, error)
 	Subscription(ctx context.Context, id string) (Subscription, error)
 	DeleteSubscription(ctx context.Context, id string) error
-	MissingEntries(ctx context.Context) ([]MissingEntry, error)
-	EntriesNeedingJudgement(ctx context.Context, limit uint) ([]TimelineEntry, error)
-	InsertEntry(ctx context.Context, entry TimelineEntry) error
-	UpdateTimelineEntry(ctx context.Context, id string, status TimelineEntryStatus) error
-	TimelineEntries(ctx context.Context, args TimelineEntriesArgs) ([]TimelineEntry, error)
-	CountTimelineEntries(ctx context.Context, args TimelineEntriesArgs) (int, error)
 }
 
 // Subscription represents a subscription to a feed.
@@ -30,47 +20,3 @@ type Subscription struct {
 	FeedID    string    `db:"feed_id"`
 	CreatedAt time.Time `db:"created_at"`
 }
-
-// TimelineEntry represents an entry in the timeline.
-type TimelineEntry struct {
-	ID          string    `db:"id"`
-	UserID      string    `db:"user_id"`
-	FeedEntryID string    `db:"feed_entry_id"`
-	CreatedAt   time.Time `db:"created_at"`
-	FeedID      string    `db:"feed_id"`
-
-	// For curation: whether the entry has been approved by the judge
-	Status TimelineEntryStatus `db:"status"`
-}
-
-// MissingEntry is an instance where a feed entry should have been added to a user's timeline.
-type MissingEntry struct {
-	UserID      string `db:"user_id"`
-	FeedEntryID string `db:"feed_entry_id"`
-	FeedID      string `db:"feed_id"`
-}
-
-// TimelineEntriesArgs holds arguments for filtering timeline entries.
-type TimelineEntriesArgs struct {
-	UserID string              // Required: scope to a single user
-	Status TimelineEntryStatus // To optionally filter by status
-	FeedID string              // To optionally filter by feed
-	Limit  uint64              // To optionally limit the number of entries returned
-
-	// To optionally filter by the entry's feed publish date, inclusive on
-	// both ends. The zero value means unset.
-	FromDate apiv1.Date
-	ToDate   apiv1.Date
-
-	// Pagination fields
-	Offset uint64 // Offset for pagination
-}
-
-// TimelineEntryStatus represents the status of a timeline entry.
-type TimelineEntryStatus string
-
-const (
-	TimelineEntryStatusRequiresJudgement TimelineEntryStatus = "requires_judgement"
-	TimelineEntryStatusApproved          TimelineEntryStatus = "approved"
-	TimelineEntryStatusRejected          TimelineEntryStatus = "rejected"
-)

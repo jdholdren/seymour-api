@@ -1,4 +1,4 @@
-.PHONY: start yac up up-d build rb-api rb-worker lint install-hooks
+.PHONY: start yac up up-d build rb-api lint install-hooks
 
 test:
 	go test ./...
@@ -21,7 +21,3 @@ build:
 rb-api:
 	docker compose build api && \
 	docker compose up -d --force-recreate api
-
-rb-worker:
-	docker compose build worker && \
-	docker compose up -d --force-recreate worker

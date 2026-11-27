@@ -26,7 +26,7 @@ type ListConfig struct {
 	Disallowlist []string `json:"disallowlist"`
 }
 
-// Filter represents a user's configured timeline filter.
+// Filter represents a user's configured feed filter.
 type Filter struct {
 	// Identity and ownership remain fixed across configuration replacements.
 	ID      string     `db:"id"`
