@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:d00f5eb4a71f6af334efb4f5a03602b89ae1426c852ab93383c3c1bffdc15196",
+  "claims": [
+    {
+      "id": "claim_c9a656ca475341a7bdce54b70fd29588",
+      "statement": "The server leaves viewer, OAuth login/callback, and logout routes public and applies session authentication middleware to its other /api routes.",
+      "evidence": [
+        {
+          "resource": "repo://internal/api/api.go",
+          "version": "repo-file-v1:sha256:5f6c7ae66e337fc734fa7da9ede854d5ecd6a1df8bdc0582970b6b5365d5d1ec"
+        }
+      ]
+    },
+    {
+      "id": "claim_974191fad60c4b9baf4bc8e21ea6d513",
+      "statement": "OAuth login stores a random state and a constrained frontend-relative redirect in a securecookie state cookie; the callback verifies the returned state before exchanging the code and resolving the GitHub user.",
+      "evidence": [
+        {
+          "resource": "repo://internal/api/oauth.go",
+          "version": "repo-file-v1:sha256:a395166bf304381ee48539e5228102f89ac0db076d25ea9b39004bfd65c39250"
+        }
+      ]
+    },
+    {
+      "id": "claim_dd7addb22c074924badd10c15a510e77",
+      "statement": "Successful GitHub account resolution sets a signed/encrypted session cookie for 30 days and redirects to the configured frontend URL; logout expires that cookie.",
+      "evidence": [
+        {
+          "resource": "repo://internal/api/oauth.go",
+          "version": "repo-file-v1:sha256:a395166bf304381ee48539e5228102f89ac0db076d25ea9b39004bfd65c39250"
+        }
+      ]
+    },
+    {
+      "id": "claim_7aee37e467b04677a6f965bc913df089",
+      "statement": "Unauthenticated viewer requests return an empty subscription map, while authenticated viewer responses include the resolved user and feed subscriptions.",
+      "evidence": [
+        {
+          "resource": "repo://internal/api/viewer.go",
+          "version": "repo-file-v1:sha256:ff8b390cbc9a4944e44970081dcb9771c71c04653ee06ad1782b348fa6fd1b25"
+        }
+      ]
+    },
+    {
+      "id": "claim_82d6ca1abbd94a27b292962dc93310fb",
+      "statement": "A valid session identifies a user, but subscription handlers separately enforce path-user or subscription ownership; shared feed entries can be read by any authenticated user.",
+      "evidence": [
+        {
+          "resource": "repo://internal/api/AGENTS.md",
+          "version": "repo-file-v1:sha256:2c3ce230c7629e2c96cc7dffd9245e8c731de45fa907d7da0e5e25fc56285986"
+        },
+        {
+          "resource": "repo://internal/api/timeline.go",
+          "version": "repo-file-v1:sha256:7a4e7833e19334b4b6fc82c10fc1d4386e01a60d533df308695c5f9973b0738f"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.9.0",
+    "at": "2026-11-27T18:34:43.213Z"
+  }
+}

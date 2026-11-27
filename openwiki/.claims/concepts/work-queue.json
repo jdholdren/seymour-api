@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:ad7f144739a66f77ac9aedfe18fbf611fa7680643cd2d9e369a4909ebef49ba5",
+  "claims": [
+    {
+      "id": "claim_4861c28296a146778722192c12ee6681",
+      "statement": "A work item can be completed only when it is incomplete, its fencing generation matches, and its lease has not expired; otherwise completion returns a conflict when no row is updated.",
+      "evidence": [
+        {
+          "resource": "repo://internal/mysql/work_items.go",
+          "version": "repo-file-v1:sha256:eb9e05c37aae4d73775929e1d30ec44417e821cdb4dc238d3aa3da732a90f761"
+        }
+      ]
+    },
+    {
+      "id": "claim_e37769cb05bc4c61aa3e676844d46759",
+      "statement": "MySQL leasing selects one available incomplete item under FOR UPDATE SKIP LOCKED, and increments the fencing generation when re-leasing an expired lease.",
+      "evidence": [
+        {
+          "resource": "repo://internal/mysql/work_items.go",
+          "version": "repo-file-v1:sha256:eb9e05c37aae4d73775929e1d30ec44417e821cdb4dc238d3aa3da732a90f761"
+        }
+      ]
+    },
+    {
+      "id": "claim_184cec4523a34e94aa21cb7baaa1f35a",
+      "statement": "The work_items schema keeps completed records while a generated active-key column enforces uniqueness for incomplete type/key pairs.",
+      "evidence": [
+        {
+          "resource": "repo://internal/migrations/20261127000000_work_items.up.sql",
+          "version": "repo-file-v1:sha256:f54c866499db5e851a826123d65bd3ea3cb35f220b220bde974e79bf7fe40098"
+        }
+      ]
+    },
+    {
+      "id": "claim_8a2585e467664b309d0d545daa36f0d2",
+      "statement": "The current executable and HTTP router do not start a work-queue worker or expose queue endpoints; the implemented queue components provide persistence operations.",
+      "evidence": [
+        {
+          "resource": "repo://cmd/api/main.go",
+          "version": "repo-file-v1:sha256:63eb9f7c3e4f7fb646fa4624ea04db8bf29de591a1d761a4cb3bcea0c351a332"
+        },
+        {
+          "resource": "repo://internal/api/api.go",
+          "version": "repo-file-v1:sha256:5f6c7ae66e337fc734fa7da9ede854d5ecd6a1df8bdc0582970b6b5365d5d1ec"
+        },
+        {
+          "resource": "repo://internal/mysql/mysql.go",
+          "version": "repo-file-v1:sha256:440377d6f8fa1fb413e02785bfbe6ac215ddd9f7fecaaa6afc724b25163ad380"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.9.0",
+    "at": "2026-11-27T18:34:43.213Z"
+  }
+}

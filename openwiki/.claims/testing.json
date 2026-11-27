@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:6860a9b74b6019e8cef82eb24956f7f8b831d990b4f7d3bc7da13b68a1d4d06f",
+  "claims": [
+    {
+      "id": "claim_09e672086e4f446a96a625de749f39d8",
+      "statement": "The MySQL integration test package starts one MySQL 8.4 Testcontainers instance, applies embedded migrations once for the package, and truncates tables between tests.",
+      "evidence": [
+        {
+          "resource": "repo://internal/mysql/mysql_test.go",
+          "version": "repo-file-v1:sha256:75f4b7e7b19cd5073597e77d93d3fc94d5d3fa2adfd0fcbc391856bc2ce1a720"
+        }
+      ]
+    },
+    {
+      "id": "claim_333c826c23a048a9ae78fccea6b3b3fd",
+      "statement": "Domain tests cover filter validation and structured error construction, while sync tests cover RSS/Atom parsing and XML-root format detection.",
+      "evidence": [
+        {
+          "resource": "repo://internal/seymour/errors_test.go",
+          "version": "repo-file-v1:sha256:fbcd63245fede9a79f34b666401d244173b42fa17fa29d738b6d31871fcccb88"
+        },
+        {
+          "resource": "repo://internal/seymour/filter_test.go",
+          "version": "repo-file-v1:sha256:ff76881c95f9e197e5fc504e385f81415ad2f10922952c4ec10062b31bc8c8f7"
+        },
+        {
+          "resource": "repo://internal/sync/sync_test.go",
+          "version": "repo-file-v1:sha256:c8f4b06e0b38e1b3b16a2cde1ccca4b393a43a5008e6ab799e851a4b49f861a7"
+        }
+      ]
+    },
+    {
+      "id": "claim_419119d234944f3e9b3274abbf3ecb64",
+      "statement": "MySQL tests exercise feed deduplication, user-scoped filter behavior, concurrent filter creation, and work-queue fencing and lease behavior.",
+      "evidence": [
+        {
+          "resource": "repo://internal/mysql/feeds_test.go",
+          "version": "repo-file-v1:sha256:48a7f6ba6e2e52984fd92e7e124d75264a4751c1d37a9e01038245f3058f3b86"
+        },
+        {
+          "resource": "repo://internal/mysql/filters_test.go",
+          "version": "repo-file-v1:sha256:5f5d1e39bf90a88c52899a27bb07e251e3f6ee7f09c39fa59a4e5d12af6cc67d"
+        },
+        {
+          "resource": "repo://internal/mysql/work_items_test.go",
+          "version": "repo-file-v1:sha256:00dd4858e74f73e8d5c3aef54aa53b9520d05abc0f4af10fe4e2531ff156c796"
+        }
+      ]
+    },
+    {
+      "id": "claim_90fc36f5c5b64e35880835ef3f019524",
+      "statement": "The repository's make test target runs go test ./..., and the CI test workflow invokes make test.",
+      "evidence": [
+        {
+          "resource": "repo://.github/workflows/test.yml",
+          "version": "repo-file-v1:sha256:87849fd4240ee36053834643d8e21d75e63ffa622080b328b624d9267f7dd37f"
+        },
+        {
+          "resource": "repo://Makefile",
+          "version": "repo-file-v1:sha256:312adc8c503fee9ed706fe25aceb38dd6da3db2d157e38d8aa6252aeedb6e49b"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.9.0",
+    "at": "2026-11-27T18:34:43.213Z"
+  }
+}
